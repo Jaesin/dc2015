@@ -8,6 +8,7 @@
 namespace Drupal\serialization\Normalizer;
 
 use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -43,22 +44,34 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
   /**
    * {@inheritdoc}
    */
-  public function denormalize($data, $class, $format = NULL, array $context = array()) {
-    if (empty($context['entity_type'])) {
-      throw new UnexpectedValueException('Entity type parameter must be included in context.');
+  public function denormalize($data, $class, $format = NULL, array $context = []) {
+    // Get the entity type ID letting the context definition override the $class.
+    $entity_type_id = !empty($context['entity_type']) ? $context['entity_type']
+      : $this->entityManager->getEntityTypeFromClass($class);
+
+    /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
+    // Get the entity type definition.
+    $entity_type = $this->entityManager->getDefinition($entity_type_id);
+
+    // Don't try to create an entity without an entity type id.
+    if (!$entity_type instanceof EntityTypeInterface) {
+      throw new UnexpectedValueException('A valid entity type is required for denormalization.');
     }
 
-    $entity_type = $this->entityManager->getDefinition($context['entity_type']);
-
-    // The bundle property behaves differently from other entity properties.
-    // i.e. the nested structure with a 'value' key does not work.
+    // The bundle property might be an entity reference and behaves differently
+    // from other entity properties. i.e. the nested structure with a 'value'
+    // key does not work.
     if ($entity_type->hasKey('bundle')) {
       $bundle_key = $entity_type->getKey('bundle');
-      $type = $data[$bundle_key][0]['value'];
-      $data[$bundle_key] = $type;
+      $data[$bundle_key] = !empty($data[$bundle_key][0]['target_id']) ? $data[$bundle_key][0]['target_id'] : $data[$bundle_key][0]['value'];
     }
 
-    return $this->entityManager->getStorage($context['entity_type'])->create($data);
-  }
+    // Create the entity from data.
+    $entity = $this->entityManager->getStorage($entity_type_id)->create($data);
 
+    // Pass the names of the fields whose values can be merged.
+    $entity->_restSubmittedFields = array_keys($data);
+
+    return $entity;
+  }
 }

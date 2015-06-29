@@ -8,7 +8,7 @@
 namespace Drupal\rest\Tests;
 
 use Drupal\Core\Url;
-use Drupal\rest\Tests\RESTTestBase;
+use Drupal\node\Entity\Node;
 
 /**
  * Tests special cases for node entities.
@@ -89,5 +89,41 @@ class NodeTest extends RESTTestBase {
     $this->assertEqual($updated_node->getTitle(), $new_title);
     // Make sure that the UUID of the node has not changed.
     $this->assertEqual($node->get('uuid')->getValue(), $updated_node->get('uuid')->getValue(), 'UUID was not changed.');
+  }
+
+  /**
+   * Test creating a node using json serialization.
+   */
+  public function testCreate() {
+    $this->enableNodeConfiguration('POST', 'create');
+    $this->enableService('entity:node', 'POST', 'json');
+
+    // Create a title.
+    $title = $this->randomString();
+
+    // Data to be used for serialization.
+    $data = [
+      'type' => [['target_id' => 'resttest']],
+      'title' => [['value' => $title ]],
+    ];
+
+    // Create a JSON version of a simple node with the title.
+    $serialized = $this->container->get('serializer')->serialize($data, 'json');
+
+    // Post to the REST service to create the node.
+    $this->httpRequest('/entity/node', 'POST', $serialized, 'application/json');
+
+    // Make sure the response is "CREATED".
+    $this->assertResponse(201);
+
+    /** @var \Drupal\node\Entity\Node $node */
+    // Load the newly created node.
+    $node = Node::load(1);
+
+    // Test that the title is the same as what we posted.
+    $this->assertEqual($node->title->value, $title);
+
+    // Make sure the request returned a redirect header to view the node.
+    $this->assertHeader('Location', $node->url('canonical', ['absolute' => TRUE]));
   }
 }
