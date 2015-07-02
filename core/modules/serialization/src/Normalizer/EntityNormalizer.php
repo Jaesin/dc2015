@@ -8,8 +8,6 @@
 namespace Drupal\serialization\Normalizer;
 
 use Drupal\Core\Entity\EntityManagerInterface;
-use Drupal\Core\Entity\EntityTypeInterface;
-use Drupal\Core\Field\BaseFieldDefinition;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -67,7 +65,7 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
         ->getBaseFieldDefinitions($entity_type_id);
       // Get the ID key from the base field definition for the bundle key.
       $key_id = $base_field_definitions[$bundle_key]
-        ? $base_field_definitions[$bundle_key]->getMainPropertyName()
+        ? $base_field_definitions[$bundle_key]->getFieldStorageDefinition()->getMainPropertyName()
         : 'value';
       // Normalize the bundle if it is not explicitly set.
       $data[$bundle_key] = $data[$bundle_key][0][$key_id] ?: $data[$bundle_key];
