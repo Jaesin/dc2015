@@ -7,7 +7,6 @@
 
 namespace Drupal\Core\StackMiddleware;
 
-use Drupal\Core\ContentNegotiation;
 use Drupal\Core\ContentNegotiationInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -29,7 +28,7 @@ class NegotiationMiddleware implements HttpKernelInterface {
   /**
    * The content negotiator.
    *
-   * @var \Drupal\Core\ContentNegotiation
+   * @var \Drupal\Core\ContentNegotiationInterface
    */
   protected $negotiator;
 
@@ -45,10 +44,10 @@ class NegotiationMiddleware implements HttpKernelInterface {
    *
    * @param \Symfony\Component\HttpKernel\HttpKernelInterface $app
    *   The wrapper HTTP kernel
-   * @param \Drupal\Core\ContentNegotiation $negotiator
+   * @param \Drupal\Core\ContentNegotiationInterface $negotiator
    *   The content negotiator.
    */
-  public function __construct(HttpKernelInterface $app, ContentNegotiation $negotiator) {
+  public function __construct(HttpKernelInterface $app, ContentNegotiationInterface $negotiator) {
     $this->app = $app;
     $this->negotiator = $negotiator;
   }
