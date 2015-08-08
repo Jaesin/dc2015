@@ -7,11 +7,12 @@
 
 namespace Drupal\Tests\Core\StackMiddleware;
 
-use Drupal\Core\Site\Settings;
 use Drupal\Core\StackMiddleware\NegotiationMiddleware;
 use Drupal\Tests\UnitTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver;
+use Symfony\Component\HttpKernel\HttpKernel;
 
 /**
  * @coversDefaultClass \Drupal\Core\StackMiddleware\NegotiationMiddleware
@@ -30,7 +31,10 @@ class NegotiationMiddlewareTest extends UnitTestCase {
   protected function setUp() {
     parent::setUp();
 
-    $this->negotiationMiddleware = new NegotiationMiddleware;
+    $dispatcher = new EventDispatcher();
+    $resolver = new ControllerResolver();
+    $app = new HttpKernel($dispatcher, $resolver);
+    $this->negotiationMiddleware = new NegotiationMiddleware($app);
   }
 
   /**
