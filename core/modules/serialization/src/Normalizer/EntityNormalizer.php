@@ -45,8 +45,7 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
    */
   public function denormalize($data, $class, $format = NULL, array $context = []) {
     // Get the entity type ID letting the context definition override the $class.
-    $entity_type_id = !empty($context['entity_type']) ? $context['entity_type']
-      : $this->entityManager->getEntityTypeFromClass($class);
+    $entity_type_id = !empty($context['entity_type']) ? $context['entity_type'] : $this->entityManager->getEntityTypeFromClass($class);
 
     /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
     // Get the entity type definition.
@@ -61,25 +60,32 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
     if ($entity_type->hasKey('bundle')) {
       $bundle_key = $entity_type->getKey('bundle');
       // Get the base field definitions for this entity type.
-      $base_field_definitions = $this->entityManager
-        ->getBaseFieldDefinitions($entity_type_id);
+      $base_field_definitions = $this->entityManager->getBaseFieldDefinitions($entity_type_id);
+
+      // Set a default key ID.
+      $key_id = 'value';
       // Get the ID key from the base field definition for the bundle key.
-      $key_id = $base_field_definitions[$bundle_key]
-        ? $base_field_definitions[$bundle_key]->getFieldStorageDefinition()->getMainPropertyName()
-        : 'value';
+      if (isset($base_field_definitions[$bundle_key])) {
+        $key_id = $base_field_definitions[$bundle_key]->getFieldStorageDefinition()->getMainPropertyName();
+      }
+
       // Normalize the bundle if it is not explicitly set.
-      $data[$bundle_key] = $data[$bundle_key][0][$key_id] ?: $data[$bundle_key];
+      $data[$bundle_key] = isset($data[$bundle_key][0][$key_id]) ? $data[$bundle_key][0][$key_id] : $data[$bundle_key];
+
+      $bundle_entity_type = $entity_type->getBundleEntityType();
+      $bundle_types = ($bundle_entity_type !== 'bundle') ? $this->entityManager->getStorage($bundle_entity_type)->getQuery()->execute() : [];
+
       // Make sure the bundle is a simple string.
-      if (!is_string($data[$bundle_key])) {
-        throw new UnexpectedValueException('A valid bundle is required for denormalization.');
+      if (!is_string($data[$bundle_key]) || ($bundle_types && !in_array($data[$bundle_key], $bundle_types))) {
+        throw new UnexpectedValueException(sprintf('"%s" is not a valid bundle type for denormalization.', $data[$bundle_key]));
       }
     }
 
     // Create the entity from data.
     $entity = $this->entityManager->getStorage($entity_type_id)->create($data);
 
-    // @TODO Make this the responsibility of the FieldableEntityInterface::getChangedFields(). See: https://www.drupal.org/node/2456257
     // Pass the names of the fields whose values can be merged.
+    // @todo https://www.drupal.org/node/2456257 remove this.
     $entity->_restSubmittedFields = array_keys($data);
 
     return $entity;
