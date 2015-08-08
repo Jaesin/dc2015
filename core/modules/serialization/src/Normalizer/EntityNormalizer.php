@@ -47,18 +47,18 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
     // Get the entity type ID letting the context definition override the $class.
     $entity_type_id = !empty($context['entity_type']) ? $context['entity_type'] : $this->entityManager->getEntityTypeFromClass($class);
 
-    /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
+    /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type_definition */
     // Get the entity type definition.
-    $entity_type = $this->entityManager->getDefinition($entity_type_id, FALSE);
+    $entity_type_definition = $this->entityManager->getDefinition($entity_type_id, FALSE);
 
     // Don't try to create an entity without an entity type id.
-    if (!$entity_type) {
+    if (!$entity_type_definition) {
       throw new UnexpectedValueException('A valid entity type is required for denormalization.');
     }
 
     // The bundle property will be required to denormalize a bundleable entity.
-    if ($entity_type->hasKey('bundle')) {
-      $bundle_key = $entity_type->getKey('bundle');
+    if ($entity_type_definition->hasKey('bundle')) {
+      $bundle_key = $entity_type_definition->getKey('bundle');
       // Get the base field definitions for this entity type.
       $base_field_definitions = $this->entityManager->getBaseFieldDefinitions($entity_type_id);
 
@@ -70,12 +70,16 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
       }
 
       // Normalize the bundle if it is not explicitly set.
-      $data[$bundle_key] = isset($data[$bundle_key][0][$key_id]) ? $data[$bundle_key][0][$key_id] : $data[$bundle_key];
+      $data[$bundle_key] = isset($data[$bundle_key][0][$key_id])
+        ? $data[$bundle_key][0][$key_id]
+        : (isset($data[$bundle_key]) ? $data[$bundle_key] : NULL);
 
-      $bundle_entity_type = $entity_type->getBundleEntityType();
+      // Get the bundle entity type from the entity type definition.
+      $bundle_entity_type = $entity_type_definition->getBundleEntityType();
+      // @todo http://drupal.org/node/2346857 default to NULL.
       $bundle_types = ($bundle_entity_type !== 'bundle') ? $this->entityManager->getStorage($bundle_entity_type)->getQuery()->execute() : [];
 
-      // Make sure the bundle is a simple string.
+      // Make sure the submitted bundle is a valid bundle for the entity type.
       if (!is_string($data[$bundle_key]) || ($bundle_types && !in_array($data[$bundle_key], $bundle_types))) {
         throw new UnexpectedValueException(sprintf('"%s" is not a valid bundle type for denormalization.', $data[$bundle_key]));
       }
