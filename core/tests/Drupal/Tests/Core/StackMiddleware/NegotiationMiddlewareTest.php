@@ -2,25 +2,27 @@
 
 /**
  * @file
- * Contains \Drupal\Tests\Core\ContentNegotiationTest.
+ * Contains \Drupal\Tests\Core\StackMiddleware\NegotiationMiddlewareTest.
  */
 
-namespace Drupal\Tests\Core;
+namespace Drupal\Tests\Core\StackMiddleware;
 
-use Drupal\Core\ContentNegotiation;
+use Drupal\Core\Site\Settings;
+use Drupal\Core\StackMiddleware\NegotiationMiddleware;
 use Drupal\Tests\UnitTestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
- * @coversDefaultClass \Drupal\Core\ContentNegotiation
- * @group ContentNegotiation
+ * @coversDefaultClass \Drupal\Core\StackMiddleware\NegotiationMiddleware
+ * @group NegotiationMiddleware
  */
-class ContentNegotiationTest extends UnitTestCase {
+class NegotiationMiddlewareTest extends UnitTestCase {
 
   /**
-   * @var \Drupal\Core\ContentNegotiation
+   * @var \Drupal\Core\StackMiddleware\NegotiationMiddleware
    */
-  protected $contentNegotiation;
+  protected $negotiationMiddleware;
 
   /**
    * {@inheritdoc}
@@ -28,7 +30,7 @@ class ContentNegotiationTest extends UnitTestCase {
   protected function setUp() {
     parent::setUp();
 
-    $this->contentNegotiation = new ContentNegotiation;
+    $this->negotiationMiddleware = new NegotiationMiddleware;
   }
 
   /**
@@ -40,7 +42,7 @@ class ContentNegotiationTest extends UnitTestCase {
     $request = new Request();
     $request->attributes->set('ajax_iframe_upload', '1');
 
-    $this->assertSame('iframeupload', $this->contentNegotiation->getContentType($request));
+    $this->assertSame('iframeupload', $this->negotiationMiddleware->getContentType($request));
   }
 
   /**
@@ -50,7 +52,7 @@ class ContentNegotiationTest extends UnitTestCase {
     $request = new Request();
     $request->query->set('_format', 'bob');
 
-    $this->assertSame('bob', $this->contentNegotiation->getContentType($request));
+    $this->assertSame('bob', $this->negotiationMiddleware->getContentType($request));
   }
 
   /**
@@ -61,7 +63,7 @@ class ContentNegotiationTest extends UnitTestCase {
   public function testUnknowContentTypeReturnsHtmlByDefault() {
     $request = new Request();
 
-    $this->assertSame('html', $this->contentNegotiation->getContentType($request));
+    $this->assertSame('html', $this->negotiationMiddleware->getContentType($request));
   }
 
   /**
@@ -73,7 +75,7 @@ class ContentNegotiationTest extends UnitTestCase {
     $request = new Request();
     $request->headers->set('X-Requested-With', 'XMLHttpRequest');
 
-    $this->assertSame('html', $this->contentNegotiation->getContentType($request));
+    $this->assertSame('html', $this->negotiationMiddleware->getContentType($request));
   }
 
 }
