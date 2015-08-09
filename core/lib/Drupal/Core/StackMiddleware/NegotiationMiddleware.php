@@ -82,7 +82,7 @@ class NegotiationMiddleware implements HttpKernelInterface {
    * @return string
    *   The normalized type of a given request.
    */
-  private function getContentType(Request $request) {
+  protected function getContentType(Request $request) {
     // AJAX iframe uploads need special handling, because they contain a JSON
     // response wrapped in <textarea>.
     if ($request->get('ajax_iframe_upload', FALSE)) {
