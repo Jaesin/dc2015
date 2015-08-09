@@ -42,7 +42,13 @@ class NodeTest extends RESTTestBase {
     $this->drupalLogin($account);
   }
 
+  /**
+   * Serializes and post a node to create it.
+   *
+   * @param array $data
+   */
   protected function postNode($data) {
+    // Enable node creation via POST.
     $this->enableNodeConfiguration('POST', 'create');
     $this->enableService('entity:node', 'POST', 'json');
 
@@ -50,9 +56,15 @@ class NodeTest extends RESTTestBase {
     $serialized = $this->container->get('serializer')->serialize($data, 'json');
 
     // Post to the REST service to create the node.
-    return $this->httpRequest('/entity/node', 'POST', $serialized, 'application/json');
+    $this->httpRequest('/entity/node', 'POST', $serialized, 'application/json');
   }
 
+  /**
+   * Testes the title on a newly created node.
+   *
+   * @param array $data
+   * @return \Drupal\node\Entity\Node
+   */
   protected function assertNodeTitleMatch($data) {
     /** @var \Drupal\node\Entity\Node $node */
     // Load the newly created node.
