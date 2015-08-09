@@ -34,7 +34,11 @@ class NegotiationMiddlewareTest extends UnitTestCase {
     $dispatcher = new EventDispatcher();
     $resolver = new ControllerResolver();
     $app = new HttpKernel($dispatcher, $resolver);
-    $this->negotiationMiddleware = new NegotiationMiddleware($app);
+    $this->negotiationMiddleware = $this->getMockBuilder('Drupal\Core\StackMiddleware\NegotiationMiddleware')
+      ->setConstructorArgs(array($app))
+      ->setMethods(array('getContentType'))
+      ->getMock();
+
   }
 
   /**

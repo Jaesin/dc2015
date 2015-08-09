@@ -69,7 +69,7 @@ class NegotiationMiddleware implements HttpKernelInterface {
     $this->formats[$format] = $mime_type;
     return $this;
   }
-  
+
   /**
    * Gets the normalized type of a request.
    *
@@ -82,7 +82,7 @@ class NegotiationMiddleware implements HttpKernelInterface {
    * @return string
    *   The normalized type of a given request.
    */
-  public function getContentType(Request $request) {
+  private function getContentType(Request $request) {
     // AJAX iframe uploads need special handling, because they contain a JSON
     // response wrapped in <textarea>.
     if ($request->get('ajax_iframe_upload', FALSE)) {
