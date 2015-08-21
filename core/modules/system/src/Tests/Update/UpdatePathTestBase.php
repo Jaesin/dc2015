@@ -8,6 +8,7 @@
 namespace Drupal\system\Tests\Update;
 
 use Drupal\Component\Utility\Crypt;
+use Drupal\config\Tests\SchemaCheckTestTrait;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Url;
 use Drupal\simpletest\WebTestBase;
@@ -28,12 +29,18 @@ use Symfony\Component\HttpFoundation\Request;
  *   method in this class.
  * - In your test method, call $this->runUpdates() to run the necessary updates,
  *   and then use test assertions to verify that the result is what you expect.
+ * - In order to test both with a "bare" database dump as well as with a
+ *   database dump filled with content, extend your update path test class with
+ *   a new test class that overrides the bare database dump. Refer to
+ *   UpdatePathTestBaseFilledTest for an example.
  *
  * @ingroup update_api
  *
  * @see hook_update_N()
  */
 abstract class UpdatePathTestBase extends WebTestBase {
+
+  use SchemaCheckTestTrait;
 
   /**
    * Modules to enable after the database is loaded.
@@ -46,6 +53,10 @@ abstract class UpdatePathTestBase extends WebTestBase {
    * The file system/tests/fixtures/update/drupal-8.bare.standard.php.gz is
    * normally included first -- this sets up the base database from a bare
    * standard Drupal installation.
+   *
+   * The file system/tests/fixtures/update/drupal-8.filled.standard.php.gz
+   * can also be used in case we want to test with a database filled with
+   * content, and with all core modules enabled.
    *
    * @var array
    */
@@ -99,6 +110,15 @@ abstract class UpdatePathTestBase extends WebTestBase {
    * @var string
    */
   protected $updateUrl;
+
+  /**
+   * Disable strict config schema checking.
+   *
+   * The schema is verified at the end of running the update.
+   *
+   * @var bool
+   */
+  protected $strictConfigSchema = FALSE;
 
   /**
    * Constructs an UpdatePathTestCase object.
@@ -217,12 +237,26 @@ abstract class UpdatePathTestBase extends WebTestBase {
 
     // Run the update hooks.
     $this->clickLink(t('Apply pending updates'));
+
+    // The config schema can be incorrect while the update functions are being
+    // executed. But once the update has been completed, it needs to be valid
+    // again. Assert the schema of all configuration objects now.
+    $names = $this->container->get('config.storage')->listAll();
+    /** @var \Drupal\Core\Config\TypedConfigManagerInterface $typed_config */
+    $typed_config = $this->container->get('config.typed');
+    foreach ($names as $name) {
+      $config = $this->config($name);
+      $this->assertConfigSchema($typed_config, $name, $config->get());
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   protected function rebuildAll() {
+    // We know the rebuild causes notices, so don't exit on failure.
+    $die_on_fail = $this->dieOnFail;
+    $this->dieOnFail = FALSE;
     parent::rebuildAll();
 
     // Remove the notices we get due to the menu link rebuild prior to running
@@ -234,6 +268,7 @@ abstract class UpdatePathTestBase extends WebTestBase {
         $this->results['#exception']--;
       }
     }
+    $this->dieOnFail = $die_on_fail;
   }
 
 }

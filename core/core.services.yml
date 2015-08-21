@@ -1,6 +1,13 @@
 parameters:
-  session.storage.options: {}
-  twig.config: {}
+  session.storage.options:
+    gc_probability: 1
+    gc_divisor: 100
+    gc_maxlifetime: 200000
+    cookie_lifetime: 2000000
+  twig.config:
+    debug: false
+    auto_reload: null
+    cache: true
   renderer.config:
     required_cache_contexts: ['languages:language_interface', 'theme', 'user.permissions']
     auto_placeholder_conditions:
@@ -59,6 +66,11 @@ services:
       - { name: cache.context }
   cache_context.url.site:
     class: Drupal\Core\Cache\Context\SiteCacheContext
+    arguments: ['@request_stack']
+    tags:
+      - { name: cache.context }
+  cache_context.url.path:
+    class: Drupal\Core\Cache\Context\PathCacheContext
     arguments: ['@request_stack']
     tags:
       - { name: cache.context }
@@ -938,7 +950,7 @@ services:
       - { name: event_subscriber }
   main_content_renderer.html:
     class: Drupal\Core\Render\MainContent\HtmlRenderer
-    arguments: ['@title_resolver', '@plugin.manager.display_variant', '@event_dispatcher', '@module_handler', '@renderer', '@render_cache']
+    arguments: ['@title_resolver', '@plugin.manager.display_variant', '@event_dispatcher', '@module_handler', '@renderer', '@render_cache', '%renderer.config%']
     tags:
       - { name: render.main_content_renderer, format: html }
   main_content_renderer.ajax:
@@ -1434,7 +1446,7 @@ services:
     class: Drupal\Core\Extension\InfoParser
   twig:
     class: Drupal\Core\Template\TwigEnvironment
-    arguments: ['@app.root', '@cache.default', '@twig.loader', '%twig.config%']
+    arguments: ['@app.root', '@cache.default', '%twig_extension_hash%', '@twig.loader', '%twig.config%']
     tags:
       - { name: service_collector, tag: 'twig.extension', call: addExtension }
   twig.extension:

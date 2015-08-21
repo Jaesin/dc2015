@@ -711,7 +711,6 @@ abstract class WebTestBase extends TestBase {
     // Not using File API; a potential error must trigger a PHP warning.
     $directory = DRUPAL_ROOT . '/' . $this->siteDirectory;
     copy(DRUPAL_ROOT . '/sites/default/default.settings.php', $directory . '/settings.php');
-    copy(DRUPAL_ROOT . '/sites/default/default.services.yml', $directory . '/services.yml');
 
     // All file system paths are created by System module during installation.
     // @see system_requirements()
@@ -753,10 +752,12 @@ abstract class WebTestBase extends TestBase {
       file_put_contents($directory . '/settings.php', "\n\$test_class = '" . get_class($this) ."';\n" . 'include DRUPAL_ROOT . \'/\' . $site_path . \'/settings.testing.php\';' ."\n", FILE_APPEND);
     }
     $settings_services_file = DRUPAL_ROOT . '/' . $this->originalSite . '/testing.services.yml';
-    if (file_exists($settings_services_file)) {
-      // Copy the testing-specific service overrides in place.
-      copy($settings_services_file, $directory . '/services.yml');
+    if (!file_exists($settings_services_file)) {
+      // Otherwise, use the default services as a starting point for overrides.
+      $settings_services_file = DRUPAL_ROOT . '/sites/default/default.services.yml';
     }
+    // Copy the testing-specific service overrides in place.
+    copy($settings_services_file, $directory . '/services.yml');
     if ($this->strictConfigSchema) {
       // Add a listener to validate configuration schema on save.
       $yaml = new \Symfony\Component\Yaml\Yaml();
@@ -830,6 +831,15 @@ abstract class WebTestBase extends TestBase {
     $config->getEditable('system.performance')
       ->set('css.preprocess', FALSE)
       ->set('js.preprocess', FALSE)
+      ->save();
+
+    // Set an explicit time zone to not rely on the system one, which may vary
+    // from setup to setup. The Australia/Sydney time zone is chosen so all
+    // tests are run using an edge case scenario (UTC+10 and DST). This choice
+    // is made to prevent time zone related regressions and reduce the
+    // fragility of the testing system in general.
+    $config->getEditable('system.date')
+      ->set('timezone.default', 'Australia/Sydney')
       ->save();
   }
 
@@ -2464,7 +2474,7 @@ abstract class WebTestBase extends TestBase {
         $path = substr($path, $length);
       }
       // Ensure that we have an absolute path.
-      if ($path[0] !== '/') {
+      if (empty($path) || $path[0] !== '/') {
         $path = '/' . $path;
       }
       // Finally, prepend the $base_url.

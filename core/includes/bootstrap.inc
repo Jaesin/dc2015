@@ -279,70 +279,6 @@ function drupal_get_path($type, $name) {
 }
 
 /**
- * Sets an HTTP response header for the current page.
- *
- * Note: When sending a Content-Type header, always include a 'charset' type,
- * too. This is necessary to avoid security bugs (e.g. UTF-7 XSS).
- *
- * @param $name
- *   The HTTP header name, or the special 'Status' header name.
- * @param $value
- *   The HTTP header value; if equal to FALSE, the specified header is unset.
- *   If $name is 'Status', this is expected to be a status code followed by a
- *   reason phrase, e.g. "404 Not Found".
- * @param $append
- *   Whether to append the value to an existing header or to replace it.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Symfony\Component\HttpFoundation\Response->headers->set().
- *   See https://www.drupal.org/node/2181523.
- */
-function _drupal_add_http_header($name, $value, $append = FALSE) {
-  // The headers as name/value pairs.
-  $headers = &drupal_static('drupal_http_headers', array());
-
-  $name_lower = strtolower($name);
-
-  if ($value === FALSE) {
-    $headers[$name_lower] = FALSE;
-  }
-  elseif (isset($headers[$name_lower]) && $append) {
-    // Multiple headers with identical names may be combined using comma (RFC
-    // 2616, section 4.2).
-    $headers[$name_lower] .= ',' . $value;
-  }
-  else {
-    $headers[$name_lower] = $value;
-  }
-}
-
-/**
- * Gets the HTTP response headers for the current page.
- *
- * @param $name
- *   An HTTP header name. If omitted, all headers are returned as name/value
- *   pairs. If an array value is FALSE, the header has been unset.
- *
- * @return
- *   A string containing the header value, or FALSE if the header has been set,
- *   or NULL if the header has not been set.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Symfony\Component\HttpFoundation\Response->headers->get().
- *   See https://www.drupal.org/node/2181523.
- */
-function drupal_get_http_header($name = NULL) {
-  $headers = &drupal_static('drupal_http_headers', array());
-  if (isset($name)) {
-    $name = strtolower($name);
-    return isset($headers[$name]) ? $headers[$name] : NULL;
-  }
-  else {
-    return $headers;
-  }
-}
-
-/**
  * Translates a string to the current language or to a given language.
  *
  * The t() function serves two purposes. First, at run-time it translates
@@ -407,8 +343,11 @@ function t($string, array $args = array(), array $options = array()) {
  * @see \Drupal\Component\Utility\SafeMarkup::format()
  * @see t()
  * @ingroup sanitization
+ *
+ * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
+ *   Use \Drupal\Component\Utility\SafeMarkup::format().
  */
-function format_string($string, array $args = array()) {
+function format_string($string, array $args) {
   return SafeMarkup::format($string, $args);
 }
 
@@ -437,6 +376,9 @@ function format_string($string, array $args = array()) {
  *   TRUE if the text is valid UTF-8, FALSE if not.
  *
  * @see \Drupal\Component\Utility\Unicode::validateUtf8()
+ *
+ * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
+ *   Use \Drupal\Component\Utility\Unicode::validateUtf8().
  */
 function drupal_validate_utf8($text) {
   return Unicode::validateUtf8($text);
@@ -469,10 +411,7 @@ function watchdog_exception($type, Exception $exception, $message = NULL, $varia
 
   // Use a default value if $message is not set.
   if (empty($message)) {
-    // The exception message is run through
-    // \Drupal\Component\Utility\SafeMarkup::checkPlain() by
-    // \Drupal\Core\Utility\Error:decodeException().
-    $message = '%type: !message in %function (line %line of %file).';
+    $message = '%type: @message in %function (line %line of %file).';
   }
 
   if ($link) {
