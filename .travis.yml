@@ -90,3 +90,4 @@ script:
   # Run web test. Specifiv tests should be added in one of the following formats.
   # - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest"
   # - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest::testNodes"
+  - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest"
