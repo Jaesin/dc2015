@@ -8,6 +8,7 @@
 namespace Drupal\simpletest;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Render\RenderContext;
@@ -286,7 +287,7 @@ trait AssertContentTrait {
    *   Link position counting from zero.
    * @param string $message
    *   (optional) A message to display with the assertion. Do not translate
-   *   messages: use format_string() to embed variables in the message text, not
+   *   messages: use strtr() to embed variables in the message text, not
    *   t(). If left blank, a default message will be displayed.
    * @param string $group
    *   (optional) The group this message is in, which is displayed in a column
@@ -299,7 +300,7 @@ trait AssertContentTrait {
    */
   protected function assertLink($label, $index = 0, $message = '', $group = 'Other') {
     $links = $this->xpath('//a[normalize-space(text())=:label]', array(':label' => $label));
-    $message = ($message ? $message : SafeMarkup::format('Link with label %label found.', array('%label' => $label)));
+    $message = ($message ? $message : strtr('Link with label %label found.', array('%label' => $label)));
     return $this->assert(isset($links[$index]), $message, $group);
   }
 
@@ -373,6 +374,30 @@ trait AssertContentTrait {
    */
   protected function assertNoLinkByHref($href, $message = '', $group = 'Other') {
     $links = $this->xpath('//a[contains(@href, :href)]', array(':href' => $href));
+    $message = ($message ? $message : SafeMarkup::format('No link containing href %href found.', array('%href' => $href)));
+    return $this->assert(empty($links), $message, $group);
+  }
+
+  /**
+   * Passes if a link containing a given href is not found in the main region.
+   *
+   * @param string $href
+   *   The full or partial value of the 'href' attribute of the anchor tag.
+   * @param string $message
+   *   (optional) A message to display with the assertion. Do not translate
+   *   messages: use format_string() to embed variables in the message text, not
+   *   t(). If left blank, a default message will be displayed.
+   * @param string $group
+   *   (optional) The group this message is in, which is displayed in a column
+   *   in test output. Use 'Debug' to indicate this is debugging output. Do not
+   *   translate this string. Defaults to 'Other'; most tests do not override
+   *   this default.
+   *
+   * @return bool
+   *   TRUE if the assertion succeeded, FALSE otherwise.
+   */
+  protected function assertNoLinkByHrefInMainRegion($href, $message = '', $group = 'Other') {
+    $links = $this->xpath('//main//a[contains(@href, :href)]', array(':href' => $href));
     $message = ($message ? $message : SafeMarkup::format('No link containing href %href found.', array('%href' => $href)));
     return $this->assert(empty($links), $message, $group);
   }
@@ -455,7 +480,7 @@ trait AssertContentTrait {
     if (!$message) {
       $message = SafeMarkup::format('Escaped "@raw" found', array('@raw' => $raw));
     }
-    return $this->assert(strpos($this->getRawContent(), SafeMarkup::checkPlain($raw)) !== FALSE, $message, $group);
+    return $this->assert(strpos($this->getRawContent(), Html::escape($raw)) !== FALSE, $message, $group);
   }
 
   /**
@@ -483,7 +508,7 @@ trait AssertContentTrait {
     if (!$message) {
       $message = SafeMarkup::format('Escaped "@raw" not found', array('@raw' => $raw));
     }
-    return $this->assert(strpos($this->getRawContent(), SafeMarkup::checkPlain($raw)) === FALSE, $message, $group);
+    return $this->assert(strpos($this->getRawContent(), Html::escape($raw)) === FALSE, $message, $group);
   }
 
   /**
@@ -815,7 +840,10 @@ trait AssertContentTrait {
     /** @var \Drupal\Core\Render\RendererInterface $renderer */
     $renderer = \Drupal::service('renderer');
 
-    $output = $renderer->executeInRenderContext(new RenderContext(), function() use ($callback, $variables) {
+    // The string cast is necessary because theme functions return
+    // SafeStringInterface objects. This means we can assert that $expected
+    // matches the theme output without having to worry about 0 == ''.
+    $output = (string) $renderer->executeInRenderContext(new RenderContext(), function() use ($callback, $variables) {
       return \Drupal::theme()->render($callback, $variables);
     });
     $this->verbose(

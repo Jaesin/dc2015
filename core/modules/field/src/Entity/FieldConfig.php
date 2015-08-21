@@ -78,7 +78,7 @@ class FieldConfig extends FieldConfigBase implements FieldConfigInterface {
    *
    * @param array $values
    *   An array of field properties, keyed by property name. The
-   *   storage associated to the field can be specified either with:
+   *   storage associated with the field can be specified either with:
    *   - field_storage: the FieldStorageConfigInterface object,
    *   or by referring to an existing field storage in the current configuration
    *   with:
@@ -270,7 +270,8 @@ class FieldConfig extends FieldConfigBase implements FieldConfigInterface {
   protected function urlRouteParameters($rel) {
     $parameters = parent::urlRouteParameters($rel);
     $entity_type = \Drupal::entityManager()->getDefinition($this->entity_type);
-    $parameters[$entity_type->getBundleEntityType()] = $this->bundle;
+    $bundle_parameter_key = $entity_type->getBundleEntityType() ?: 'bundle';
+    $parameters[$bundle_parameter_key] = $this->bundle;
     return $parameters;
   }
 

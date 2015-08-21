@@ -594,7 +594,6 @@ function template_preprocess_links(&$variables) {
       );
       // Convert the attributes array into an Attribute object.
       $heading['attributes'] = new Attribute($heading['attributes']);
-      $heading['text'] = SafeMarkup::checkPlain($heading['text']);
     }
 
     $variables['links'] = array();
@@ -1158,9 +1157,6 @@ function template_preprocess_maintenance_task_list(&$variables) {
  * details.
  */
 function template_preprocess(&$variables, $hook, $info) {
-  // Tell all templates where they are located.
-  $variables['directory'] = \Drupal::theme()->getActiveTheme()->getPath();
-
   // Merge in variables that don't depend on hook and don't change during a
   // single page request.
   // Use the advanced drupal_static() pattern, since this is called very often.
@@ -1202,6 +1198,9 @@ function _template_preprocess_default_variables() {
 
   // Give modules a chance to alter the default template variables.
   \Drupal::moduleHandler()->alter('template_preprocess_default_variables', $variables);
+
+  // Tell all templates where they are located.
+  $variables['directory'] = \Drupal::theme()->getActiveTheme()->getPath();
 
   return $variables;
 }
@@ -1255,6 +1254,10 @@ function template_preprocess_html(&$variables) {
 
   $site_config = \Drupal::config('system.site');
   // Construct page title.
+  if (isset($variables['page']['#title']) && is_array($variables['page']['#title'])) {
+    // Do an early render if the title is a render array.
+    $variables['page']['#title'] = (string) \Drupal::service('renderer')->render($variables['page']['#title']);
+  }
   if (!empty($variables['page']['#title'])) {
     $head_title = array(
       'title' => trim(strip_tags($variables['page']['#title'])),
@@ -1295,7 +1298,7 @@ function template_preprocess_html(&$variables) {
       '@token' => $token,
     ]);
     $variables[$type]['#markup'] = $placeholder;
-    $variables[$type]['#attached']['html_response_placeholders'][$type] = $placeholder;
+    $variables[$type]['#attached']['html_response_attachment_placeholders'][$type] = $placeholder;
   }
 }
 
@@ -1325,7 +1328,7 @@ function template_preprocess_page(&$variables) {
   $variables['front_page']        = \Drupal::url('<front>');
   $variables['language']          = $language_interface;
   $variables['logo']              = theme_get_setting('logo.url');
-  $variables['site_name']         = (theme_get_setting('features.name') ? SafeMarkup::checkPlain($site_config->get('name')) : '');
+  $variables['site_name']         = (theme_get_setting('features.name') ? $site_config->get('name') : '');
   $variables['site_slogan']['#markup'] = (theme_get_setting('features.slogan') ? $site_config->get('slogan') : '');
 
   // An exception might be thrown.
@@ -1506,7 +1509,7 @@ function template_preprocess_field(&$variables, $hook) {
   // Always set the field label - allow themes to decide whether to display it.
   // In addition the label should be rendered but hidden to support screen
   // readers.
-  $variables['label'] = SafeMarkup::checkPlain($element['#title']);
+  $variables['label'] = $element['#title'];
 
   static $default_attributes;
   if (!isset($default_attributes)) {
@@ -1747,17 +1750,10 @@ function drupal_common_theme() {
     'maintenance_task_list' => array(
       'variables' => array('items' => NULL, 'active' => NULL,  'variant' => NULL),
     ),
-    'authorize_message' => array(
-      'variables' => array('message' => NULL, 'success' => TRUE),
-      'function' => 'theme_authorize_message',
-      'path' => 'core/includes',
-      'file' => 'theme.maintenance.inc',
-    ),
     'authorize_report' => array(
-      'variables' => array('messages' => array()),
-      'function' => 'theme_authorize_report',
-      'path' => 'core/includes',
-      'file' => 'theme.maintenance.inc',
+      'variables' => ['messages' => [], 'attributes' => []],
+      'includes' => ['core/includes/theme.maintenance.inc'],
+      'template' => 'authorize-report',
     ),
     // From pager.inc.
     'pager' => array(

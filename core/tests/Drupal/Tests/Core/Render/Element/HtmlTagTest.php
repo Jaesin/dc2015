@@ -7,7 +7,7 @@
 
 namespace Drupal\Tests\Core\Render\Element;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Core\Render\SafeString;
 use Drupal\Tests\UnitTestCase;
 use Drupal\Core\Render\Element\HtmlTag;
 
@@ -35,7 +35,7 @@ class HtmlTagTest extends UnitTestCase {
   public function testPreRenderHtmlTag($element, $expected) {
     $result = HtmlTag::preRenderHtmlTag($element);
     $this->assertArrayHasKey('#markup', $result);
-    $this->assertSame($expected, $result['#markup']);
+    $this->assertEquals($expected, $result['#markup']);
   }
 
   /**
@@ -46,12 +46,10 @@ class HtmlTagTest extends UnitTestCase {
 
     // Value prefix/suffix.
     $element = array(
-      '#value_prefix' => 'value_prefix|',
-      '#value_suffix' => '|value_suffix',
       '#value' => 'value',
       '#tag' => 'p',
     );
-    $tags[] = array($element, '<p>value_prefix|value|value_suffix</p>' . "\n");
+    $tags[] = array($element, '<p>value</p>' . "\n");
 
     // Normal element without a value should not result in a void element.
     $element = array(
@@ -78,6 +76,27 @@ class HtmlTagTest extends UnitTestCase {
     $element['#noscript'] = TRUE;
     $tags[] = array($element, '<noscript><div class="test" id="id">value</div>' . "\n" . '</noscript>');
 
+    // Ensure that #tag is sanitised.
+    $element = array(
+      '#tag' => 'p><script>alert()</script><p',
+      '#value' => 'value',
+    );
+    $tags[] = array($element, "<p&gt;&lt;script&gt;alert()&lt;/script&gt;&lt;p>value</p&gt;&lt;script&gt;alert()&lt;/script&gt;&lt;p>\n");
+
+    // Ensure that #value is not filtered if it is marked as safe.
+    $element = array(
+      '#tag' => 'p',
+      '#value' => SafeString::create('<script>value</script>'),
+    );
+    $tags[] = array($element, "<p><script>value</script></p>\n");
+
+    // Ensure that #value is filtered if it is not safe.
+    $element = array(
+      '#tag' => 'p',
+      '#value' => '<script>value</script>',
+    );
+    $tags[] = array($element, "<p>value</p>\n");
+
     return $tags;
   }
 
@@ -87,10 +106,10 @@ class HtmlTagTest extends UnitTestCase {
    */
   public function testPreRenderConditionalComments($element, $expected, $set_safe = FALSE) {
     if ($set_safe) {
-      SafeMarkup::set($element['#prefix']);
-      SafeMarkup::set($element['#suffix']);
+      $element['#prefix'] = SafeString::create($element['#prefix']);
+      $element['#suffix'] = SafeString::create($element['#suffix']);
     }
-    $this->assertSame($expected, HtmlTag::preRenderConditionalComments($element));
+    $this->assertEquals($expected, HtmlTag::preRenderConditionalComments($element));
   }
 
   /**

@@ -8,9 +8,9 @@
 namespace Drupal\Tests\Core\Render;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Cache\Cache;
+use Drupal\Core\Render\SafeString;
 
 /**
  * @coversDefaultClass \Drupal\Core\Render\Renderer
@@ -68,12 +68,11 @@ class RendererPlaceholdersTest extends RendererTestBase {
       if (is_array($cache_keys)) {
         $token_render_array['#cache']['keys'] = $cache_keys;
       }
-      $token = hash('sha1', serialize($token_render_array));
-      return SafeMarkup::format('<drupal-render-placeholder callback="@callback" arguments="@arguments" token="@token"></drupal-render-placeholder>', [
-        '@callback' => 'Drupal\Tests\Core\Render\PlaceholdersTest::callback',
-        '@arguments' => '0=' . $args[0],
-        '@token' => $token,
-      ]);
+      $token = hash('crc32b', serialize($token_render_array));
+      // \Drupal\Core\Render\SafeString::create() is necessary as the render
+      // system would mangle this markup. As this is exactly what happens at
+      // runtime this is a valid use-case.
+      return SafeString::create('<drupal-render-placeholder callback="Drupal\Tests\Core\Render\PlaceholdersTest::callback" arguments="' . '0=' . $args[0] . '" token="' . $token . '"></drupal-render-placeholder>');
     };
 
     $extract_placeholder_render_array = function ($placeholder_render_array) {
@@ -151,7 +150,7 @@ class RendererPlaceholdersTest extends RendererTestBase {
           'foo' => 'bar',
         ],
         'placeholders' => [
-          $generate_placeholder_markup() => [
+          (string) $generate_placeholder_markup() => [
             '#lazy_builder' => ['Drupal\Tests\Core\Render\PlaceholdersTest::callback', $args],
           ],
         ],
@@ -318,8 +317,8 @@ class RendererPlaceholdersTest extends RendererTestBase {
     // - manually created
     // - uncacheable
     $x = $base_element_b;
-    $expected_placeholder_render_array = $x['#attached']['placeholders'][$generate_placeholder_markup()];
-    unset($x['#attached']['placeholders'][$generate_placeholder_markup()]['#cache']);
+    $expected_placeholder_render_array = $x['#attached']['placeholders'][(string) $generate_placeholder_markup()];
+    unset($x['#attached']['placeholders'][(string) $generate_placeholder_markup()]['#cache']);
     $cases[] = [
       $x,
       $args,
@@ -333,6 +332,7 @@ class RendererPlaceholdersTest extends RendererTestBase {
     // - cacheable
     $x = $base_element_b;
     $x['#markup'] = $placeholder_markup = $generate_placeholder_markup($keys);
+    $placeholder_markup = (string) $placeholder_markup;
     $x['#attached']['placeholders'] = [
       $placeholder_markup => [
         '#lazy_builder' => ['Drupal\Tests\Core\Render\PlaceholdersTest::callback', $args],
@@ -440,7 +440,7 @@ class RendererPlaceholdersTest extends RendererTestBase {
 
     $this->setUpRequest('GET');
 
-    $token = hash('sha1', serialize($expected_placeholder_render_array));
+    $token = hash('crc32b', serialize($expected_placeholder_render_array));
     $expected_placeholder_markup = '<drupal-render-placeholder callback="Drupal\Tests\Core\Render\PlaceholdersTest::callback" arguments="0=' . $args[0] . '" token="' . $token . '"></drupal-render-placeholder>';
     $this->assertSame($expected_placeholder_markup, Html::normalize($expected_placeholder_markup), 'Placeholder unaltered by Html::normalize() which is used by FilterHtmlCorrector.');
 
@@ -688,10 +688,6 @@ class RendererPlaceholdersTest extends RendererTestBase {
     $this->cacheContextsManager->expects($this->any())
       ->method('convertTokensToKeys')
       ->willReturnArgument(0);
-    $this->elementInfo->expects($this->any())
-      ->method('getInfo')
-      ->with('details')
-      ->willReturn(['#theme_wrappers' => ['details']]);
     $this->controllerResolver->expects($this->any())
       ->method('getControllerFromDefinition')
       ->willReturnArgument(0);

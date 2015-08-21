@@ -367,6 +367,9 @@ function format_size($size, $langcode = NULL) {
  *   A translated date string in the requested format.
  *
  * @see \Drupal\Core\Datetime\DateFormatter::format()
+ *
+ * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
+ *   Use \Drupal::service('date.formatter')->format().
  */
 function format_date($timestamp, $type = 'medium', $format = '', $timezone = NULL, $langcode = NULL) {
   return \Drupal::service('date.formatter')->format($timestamp, $type, $format, $timezone, $langcode);
@@ -643,7 +646,7 @@ function drupal_process_attached(array $elements) {
           call_user_func_array('_drupal_add_html_head_link', $args);
           break;
         case 'http_header':
-          call_user_func_array('_drupal_add_http_header', $args);
+          // @todo Remove validation in https://www.drupal.org/node/2477223
           break;
         default:
           throw new \LogicException(sprintf('You are not allowed to use %s in #attached', $callback));
