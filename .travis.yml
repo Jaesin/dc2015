@@ -15,15 +15,59 @@ mysql:
   database: drupal
   username: root
   encoding: utf8
+env:
+  # Set up for PHP Unit tests.
+  - SIMPLETEST_DB="mysql://root:@localhost/drupal" SIMPLETEST_BASE_URL="http://localhost/"
 
 before_install:
-# possibly optional
+  # Update system
   - sudo apt-get update > /dev/null
+  # Install apache
+  - sudo apt-get install apache2 libapache2-mod-fastcgi
+  # Update composeer
   - composer self-update
+  # Enable php-fpm
+  - sudo cp ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf.default ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf
+  - sudo a2enmod rewrite actions fastcgi alias
+  - echo "cgi.fix_pathinfo = 1" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - ~/.phpenv/versions/$(phpenv version-name)/sbin/php-fpm
+  # Print out the default conf file.
+  - cat /etc/apache2/sites-available/default
+  # Configure apache virtual hosts
+  - sudo touch /etc/apache2/sites-available/default
+  - echo '' | sudo tee /etc/apache2/sites-available/default
+  - echo '<VirtualHost *:80>'                              | sudo tee -a /etc/apache2/sites-available/default
+  - echo '  DocumentRoot %TRAVIS_BUILD_DIR%'               | sudo tee -a /etc/apache2/sites-available/default
+  - echo '  <Directory "%TRAVIS_BUILD_DIR%">'              | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    Options FollowSymLinks MultiViews ExecCGI'   | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    AllowOverride All'                           | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    Order deny,allow'                            | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    Allow from all'                              | sudo tee -a /etc/apache2/sites-available/default
+  - echo '  </Directory>'                                  | sudo tee -a /etc/apache2/sites-available/default
+  - echo '  <IfModule mod_fastcgi.c>'                      | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    AddHandler php5-fcgi .php'                   | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    Action php5-fcgi /php5-fcgi'                 | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    Alias /php5-fcgi /usr/lib/cgi-bin/php5-fcgi' | sudo tee -a /etc/apache2/sites-available/default
+  - echo '    FastCgiExternalServer /usr/lib/cgi-bin/php5-fcgi -host 127.0.0.1:9000 -pass-header Authorization' | sudo tee -a /etc/apache2/sites-available/default
+  - echo '  </IfModule>'                                   | sudo tee -a /etc/apache2/sites-available/default
+  - echo '</VirtualHost>'                                  | sudo tee -a /etc/apache2/sites-available/default
+  # Set the path in the apache configuration.
+  - sudo sed -e "s?%TRAVIS_BUILD_DIR%?$(pwd)?g" --in-place /etc/apache2/sites-available/default
+  # Print out the default conf file.
+  - cat /etc/apache2/sites-available/default
+
+  # Restart apache so our site is loaded.
+  - sudo service apache2 restart
+  # Make sure apache is working.
+  - curl -v "http://localhost/"
 
 install:
-  # add composer's global bin directory to the path
-  # see: https://github.com/drush-ops/drush#install---composer
+  # Set up php.
+  - phpenv config-rm xdebug.ini
+  - php --version
+
+  # Add composer's global bin directory to the path
+  # See: https://github.com/drush-ops/drush#install---composer
   - export PATH="$HOME/.composer/vendor/bin:$PATH"
 
   # Install Drush
@@ -34,11 +78,15 @@ install:
   - mysql -e 'CREATE DATABASE `drupal` CHARACTER SET utf8 COLLATE utf8_general_ci;'
 
   # Install drupal default profile
-  - drush --verbose site-install --db-url=mysql://root:@127.0.0.1/drupal --yes
+  - drush --verbose site-install --db-url=mysql://root:@localhost/drupal --yes
+  - drush en -y simpletest
+  # Check the settings file.
+  - cat $TRAVIS_BUILD_DIR/sites/default/settings.php
 
-  # TODO: Generate content
-
-  # TODO: Phantomjs
-
-  # Run PHP Unit tests.
-  - cd core && vendor/bin/phpunit --verbose
+script:
+  # Run PHP Unit and Kernel tests.
+  - cd core && vendor/bin/phpunit --verbose && cd $TRAVIS_BUILD_DIR
+  # Create an alias for running simpletests.
+  # Run web test. Specifiv tests should be added in one of the following formats.
+  # - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest"
+  # - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest::testNodes"
