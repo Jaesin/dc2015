@@ -43,7 +43,7 @@ class NodeTest extends RESTTestBase {
   }
 
   /**
-   * Serializes and post a node to create it.
+   * Serializes and create a node via a REST "post" http request.
    *
    * @param array $data
    */
@@ -60,7 +60,7 @@ class NodeTest extends RESTTestBase {
   }
 
   /**
-   * Testes the title on a newly created node.
+   * Tests the title on a newly created node.
    *
    * @param array $data
    * @return \Drupal\node\Entity\Node

@@ -44,7 +44,7 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
    * {@inheritdoc}
    */
   public function denormalize($data, $class, $format = NULL, array $context = []) {
-    // Get the entity type ID letting the context definition override the $class.
+    // Get the entity type ID while letting context override the $class param.
     $entity_type_id = !empty($context['entity_type']) ? $context['entity_type'] : $this->entityManager->getEntityTypeFromClass($class);
 
     /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type_definition */
@@ -75,9 +75,8 @@ class EntityNormalizer extends ComplexDataNormalizer implements DenormalizerInte
         : (isset($data[$bundle_key]) ? $data[$bundle_key] : NULL);
 
       // Get the bundle entity type from the entity type definition.
-      $bundle_entity_type = $entity_type_definition->getBundleEntityType();
-      // @todo http://drupal.org/node/2346857 default to NULL.
-      $bundle_types = ($bundle_entity_type !== 'bundle') ? $this->entityManager->getStorage($bundle_entity_type)->getQuery()->execute() : [];
+      $bundle_type_id = $entity_type_definition->getBundleEntityType();
+      $bundle_types = $bundle_type_id ? $this->entityManager->getStorage($bundle_type_id)->getQuery()->execute() : [];
 
       // Make sure the submitted bundle is a valid bundle for the entity type.
       if (!is_string($data[$bundle_key]) || ($bundle_types && !in_array($data[$bundle_key], $bundle_types))) {
