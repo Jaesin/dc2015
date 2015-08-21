@@ -41,4 +41,6 @@ install:
   # TODO: Phantomjs
 
   # Run PHP Unit tests.
+  - export SIMPLETEST_DB="mysql://root:@127.0.0.1/drupal"
+  - export SIMPLETEST_BASE_URL="http://127.0.0.1/"
   - cd core && vendor/bin/phpunit --verbose
