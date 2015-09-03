@@ -202,6 +202,15 @@ class MigrateExecutable implements MigrateExecutableInterface {
    * {@inheritdoc}
    */
   public function import() {
+    // Only begin the import operation if the migration is currently idle.
+    if ($this->migration->getStatus() !== MigrationInterface::STATUS_IDLE) {
+      $this->message->display($this->t('Migration @id is busy with another operation: @status',
+        array(
+          '@id' => $this->migration->id(),
+          '@status' => $this->t($this->migration->getStatusLabel()),
+        )), 'error');
+      return MigrationInterface::RESULT_FAILED;
+    }
     $this->getEventDispatcher()->dispatch(MigrateEvents::PRE_IMPORT, new MigrateImportEvent($this->migration));
 
     // Knock off migration if the requirements haven't been met.
@@ -218,6 +227,7 @@ class MigrateExecutable implements MigrateExecutableInterface {
       return MigrationInterface::RESULT_FAILED;
     }
 
+    $this->migration->setStatus(MigrationInterface::STATUS_IMPORTING);
     $return = MigrationInterface::RESULT_COMPLETED;
     $source = $this->getSource();
     $id_map = $this->migration->getIdMap();
@@ -228,6 +238,7 @@ class MigrateExecutable implements MigrateExecutableInterface {
     catch (\Exception $e) {
       $this->message->display(
         $this->t('Migration failed with source plugin exception: !e', array('!e' => $e->getMessage())), 'error');
+      $this->migration->setStatus(MigrationInterface::STATUS_IDLE);
       return MigrationInterface::RESULT_FAILED;
     }
 
@@ -287,7 +298,14 @@ class MigrateExecutable implements MigrateExecutableInterface {
       unset($sourceValues, $destinationValues);
       $this->sourceRowStatus = MigrateIdMapInterface::STATUS_IMPORTED;
 
+      // Check for memory exhaustion.
       if (($return = $this->checkStatus()) != MigrationInterface::RESULT_COMPLETED) {
+        break;
+      }
+
+      // If anyone has requested we stop, return the requested result.
+      if ($this->migration->getStatus() == MigrationInterface::STATUS_STOPPING) {
+        $return = $this->migration->getMigrationResult();
         break;
       }
 
@@ -298,12 +316,14 @@ class MigrateExecutable implements MigrateExecutableInterface {
         $this->message->display(
           $this->t('Migration failed with source plugin exception: !e',
             array('!e' => $e->getMessage())), 'error');
+        $this->migration->setStatus(MigrationInterface::STATUS_IDLE);
         return MigrationInterface::RESULT_FAILED;
       }
     }
 
     $this->migration->setMigrationResult($return);
     $this->getEventDispatcher()->dispatch(MigrateEvents::POST_IMPORT, new MigrateImportEvent($this->migration));
+    $this->migration->setStatus(MigrationInterface::STATUS_IDLE);
     return $return;
   }
 
@@ -491,7 +511,15 @@ class MigrateExecutable implements MigrateExecutableInterface {
     // First, try resetting Drupal's static storage - this frequently releases
     // plenty of memory to continue.
     drupal_static_reset();
+
+    // Entity storage can blow up with caches so clear them out.
+    $manager =  \Drupal::entityManager();
+    foreach ($manager->getDefinitions() as $id => $definition) {
+      $manager->getStorage($id)->resetCache();
+    }
+
     // @TODO: explore resetting the container.
+
     return memory_get_usage();
   }
 

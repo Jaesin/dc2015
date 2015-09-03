@@ -27,6 +27,17 @@ class ContentTestTranslationUITest extends ContentTranslationUITestBase {
   public static $modules = array('language', 'content_translation', 'entity_test');
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultCacheContexts = [
+    'languages:language_interface',
+    'theme',
+    'url.query_args:_wrapper_format',
+    'user.permissions',
+    'user.roles:authenticated',
+  ];
+
+  /**
    * Overrides \Drupal\simpletest\WebTestBase::setUp().
    */
   protected function setUp() {
@@ -39,7 +50,7 @@ class ContentTestTranslationUITest extends ContentTranslationUITestBase {
    * Overrides \Drupal\content_translation\Tests\ContentTranslationUITestBase::getTranslatorPermission().
    */
   protected function getTranslatorPermissions() {
-    return array_merge(parent::getTranslatorPermissions(), array('administer entity_test content'));
+    return array_merge(parent::getTranslatorPermissions(), array('administer entity_test content', 'view test entity'));
   }
 
 }

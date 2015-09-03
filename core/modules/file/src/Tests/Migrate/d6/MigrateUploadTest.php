@@ -12,7 +12,7 @@ use Drupal\node\Entity\Node;
 /**
  * Migrate association data between nodes and files.
  *
- * @group file
+ * @group migrate_drupal_6
  */
 class MigrateUploadTest extends MigrateUploadBase {
 
@@ -21,6 +21,15 @@ class MigrateUploadTest extends MigrateUploadBase {
    */
   protected function setUp() {
     parent::setUp();
+    $id_mappings = array(
+      'd6_node:*' => array(
+        array(
+          array(0),
+          array(0),
+        ),
+      ),
+    );
+    $this->prepareMigrations($id_mappings);
     $this->executeMigration('d6_upload');
   }
 

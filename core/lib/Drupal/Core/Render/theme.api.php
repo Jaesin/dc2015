@@ -267,11 +267,37 @@
  * - #markup: Specifies that the array provides HTML markup directly. Unless
  *   the markup is very simple, such as an explanation in a paragraph tag, it
  *   is normally preferable to use #theme or #type instead, so that the theme
- *   can customize the markup. For additional options related to #markup see
- *   \Drupal\Core\Render\Element\Markup.
+ *   can customize the markup. Note that the value is passed through
+ *   \Drupal\Component\Utility\Xss::filterAdmin(), which strips known XSS
+ *   vectors while allowing a permissive list of HTML tags that are not XSS
+ *   vectors. (I.e, <script> and <style> are not allowed.) See
+ *   \Drupal\Component\Utility\Xss::$adminTags for the list of tags that will
+ *   be allowed. If your markup needs any of the tags that are not in this
+ *   whitelist, then you can implement a theme hook and template file and/or
+ *   an asset library. Aternatively, you can use the render array key
+ *   #allowed_tags to alter which tags are filtered.
+ * - #plain_text: Specifies that the array provides text that needs to be
+ *   escaped. This value takes precedence over #markup if present.
+ * - #allowed_tags: If #markup is supplied this can be used to change which tags
+ *   are using to filter the markup. The value should be an array of tags that
+ *   Xss::filter() would accept. If #plain_text is set this value is ignored.
+ *
+ *   Usage example:
+ *   @code
+ *   $output['admin_filtered_string'] = array(
+ *     '#markup' => '<em>This is filtered using the admin tag list</em>',
+ *   );
+ *   $output['filtered_string'] = array(
+ *     '#markup' => '<em>This is filtered</em>',
+ *     '#allowed_tags' => ['strong'],
+ *   );
+ *   $output['escaped_string'] = array(
+ *     '#plain_text' => '<em>This is escaped</em>',
+ *   );
+ *   @endcode
+ *
  *   @see core.libraries.yml
  *   @see hook_theme()
- *   @see \Drupal\Core\Render\Element\Markup
  *
  * JavaScript and CSS assets are specified in the render array using the
  * #attached property (see @ref sec_attached).
@@ -294,10 +320,7 @@
  * on plugins, and look for classes with the RenderElement or FormElement
  * annotation to discover what render elements are available.
  *
- * Modules can also currently define render elements by implementing
- * hook_element_info(), although defining a plugin is preferred.
- * properties. Look through implementations of hook_element_info() to discover
- * elements defined this way.
+ * Modules can define render elements by defining an element plugin.
  *
  * @section sec_caching Caching
  * The Drupal rendering process has the ability to cache rendered output at any
@@ -691,32 +714,6 @@ function hook_render_template($template_file, $variables) {
 }
 
 /**
- * Allows modules to declare their own Form API element types and specify their
- * default values.
- *
- * This hook allows modules to declare their own form element types and to
- * specify their default values. The values returned by this hook will be
- * merged with the elements returned by form constructor implementations and so
- * can return defaults for any Form APIs keys in addition to those explicitly
- * documented by \Drupal\Core\Render\ElementInfoManagerInterface::getInfo().
- *
- * @return array
- *   An associative array with structure identical to that of the return value
- *   of \Drupal\Core\Render\ElementInfoManagerInterface::getInfo().
- *
- * @deprecated Use an annotated class instead, see
- *   \Drupal\Core\Render\Element\ElementInterface.
- *
- * @see hook_element_info_alter()
- */
-function hook_element_info() {
-  $types['filter_format'] = array(
-    '#input' => TRUE,
-  );
-  return $types;
-}
-
-/**
  * Alter the element type information returned from modules.
  *
  * A module may implement this hook in order to alter the element type defaults
@@ -726,7 +723,8 @@ function hook_element_info() {
  *   An associative array with structure identical to that of the return value
  *   of \Drupal\Core\Render\ElementInfoManagerInterface::getInfo().
  *
- * @see hook_element_info()
+ * @see \Drupal\Core\Render\ElementInfoManager
+ * @see \Drupal\Core\Render\Element\ElementInterface
  */
 function hook_element_info_alter(array &$types) {
   // Decrease the default size of textfields.

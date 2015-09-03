@@ -8,11 +8,12 @@
 namespace Drupal\node\Tests\Migrate\d6;
 
 use Drupal\Core\Database\Database;
+use Drupal\migrate\Entity\Migration;
 
 /**
  * Node content revisions migration.
  *
- * @group node
+ * @group migrate_drupal_6
  */
 class MigrateNodeRevisionTest extends MigrateNodeTestBase {
 
@@ -23,7 +24,7 @@ class MigrateNodeRevisionTest extends MigrateNodeTestBase {
     parent::setUp();
 
     $id_mappings = array(
-      'd6_node' => array(
+      'd6_node:*' => array(
         array(array(1), array(1)),
       ),
     );
@@ -37,7 +38,8 @@ class MigrateNodeRevisionTest extends MigrateNodeTestBase {
       $user->save();
     }
 
-    $this->executeMigration('d6_node_revision');
+    $migrations = Migration::loadMultiple(['d6_node_revision:*']);
+    array_walk($migrations, [$this, 'executeMigration']);
   }
 
   /**

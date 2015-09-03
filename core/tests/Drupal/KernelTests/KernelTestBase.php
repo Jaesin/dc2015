@@ -7,6 +7,7 @@
 
 namespace Drupal\KernelTests;
 
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Config\ConfigImporter;
 use Drupal\Core\Config\StorageComparer;
@@ -591,6 +592,20 @@ abstract class KernelTestBase extends \PHPUnit_Framework_TestCase implements Ser
       $this->kernel->shutdown();
     }
 
+    // Remove all prefixed tables.
+    $original_connection_info = Database::getConnectionInfo('simpletest_original_default');
+    $original_prefix = $original_connection_info['default']['prefix']['default'];
+    $test_connection_info = Database::getConnectionInfo('default');
+    $test_prefix = $test_connection_info['default']['prefix']['default'];
+    if ($original_prefix != $test_prefix) {
+      $tables = Database::getConnection()->schema()->findTables('%');
+      foreach ($tables as $table) {
+        if (Database::getConnection()->schema()->dropTable($table)) {
+          unset($tables[$table]);
+        }
+      }
+    }
+
     // Free up memory: Own properties.
     $this->classLoader = NULL;
     $this->vfsRoot = NULL;
@@ -618,13 +633,20 @@ abstract class KernelTestBase extends \PHPUnit_Framework_TestCase implements Ser
     $this->container = NULL;
     new Settings(array());
 
+    parent::tearDown();
+  }
+
+  /**
+   * @after
+   *
+   * Additional tear down method to close the connection at the end.
+   */
+  public function tearDownCloseDatabaseConnection() {
     // Destroy the database connection, which for example removes the memory
     // from sqlite in memory.
     foreach (Database::getAllConnectionInfo() as $key => $targets) {
       Database::removeConnection($key);
     }
-
-    parent::tearDown();
   }
 
   /**
@@ -844,7 +866,7 @@ abstract class KernelTestBase extends \PHPUnit_Framework_TestCase implements Ser
     $content = $this->container->get('renderer')->render($elements);
     drupal_process_attached($elements);
     $this->setRawContent($content);
-    $this->verbose('<pre style="white-space: pre-wrap">' . SafeMarkup::checkPlain($content));
+    $this->verbose('<pre style="white-space: pre-wrap">' . Html::escape($content));
     return $content;
   }
 

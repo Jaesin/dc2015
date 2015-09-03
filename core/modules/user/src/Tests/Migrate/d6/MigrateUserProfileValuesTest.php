@@ -14,7 +14,7 @@ use Drupal\user\Entity\User;
 /**
  * User profile values migration.
  *
- * @group user
+ * @group migrate_drupal_6
  */
 class MigrateUserProfileValuesTest extends MigrateDrupal6TestBase {
 
@@ -88,13 +88,13 @@ class MigrateUserProfileValuesTest extends MigrateDrupal6TestBase {
 
     // Add some id mappings for the dependant migrations.
     $id_mappings = array(
-      'd6_user_profile_field_instance' => array(
+      'user_profile_field_instance' => array(
         array(array(1), array('user', 'user', 'fieldname')),
       ),
-      'd6_user_profile_entity_display' => array(
+      'user_profile_entity_display' => array(
         array(array(1), array('user', 'user', 'default', 'fieldname')),
       ),
-      'd6_user_profile_entity_form_display' => array(
+      'user_profile_entity_form_display' => array(
         array(array(1), array('user', 'user', 'default', 'fieldname')),
       ),
       'd6_user' => array(
@@ -130,8 +130,7 @@ class MigrateUserProfileValuesTest extends MigrateDrupal6TestBase {
       $user->save();
     }
 
-    $migration_format = entity_load('migration', 'd6_profile_values:user');
-    $this->executeMigration($migration_format);
+    $this->executeMigration('d6_profile_values');
   }
 
   /**

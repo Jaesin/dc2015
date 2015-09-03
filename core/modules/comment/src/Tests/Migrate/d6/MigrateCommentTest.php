@@ -13,7 +13,7 @@ use Drupal\migrate_drupal\Tests\d6\MigrateDrupal6TestBase;
 /**
  * Upgrade comments.
  *
- * @group comment
+ * @group migrate_drupal_6
  */
 class MigrateCommentTest extends MigrateDrupal6TestBase {
 
@@ -29,6 +29,7 @@ class MigrateCommentTest extends MigrateDrupal6TestBase {
 
     $this->installEntitySchema('node');
     $this->installEntitySchema('comment');
+    $this->installSchema('comment', ['comment_entity_statistics']);
     $this->installConfig(['node', 'comment']);
 
     entity_create('node_type', array('type' => 'page'))->save();
@@ -50,7 +51,7 @@ class MigrateCommentTest extends MigrateDrupal6TestBase {
     $node->save();
     $id_mappings = array(
       'd6_filter_format' => array(array(array(1), array('filtered_html'))),
-      'd6_node' => array(array(array(1), array(1))),
+      'd6_node:*' => array(array(array(1), array(1))),
       'd6_user' => array(array(array(0), array(0))),
       'd6_comment_type' => array(array(array('comment'), array('comment_no_subject'))),
       'd6_comment_entity_display' => array(array(array('story'), array('node', 'story', 'default', 'comment'))),

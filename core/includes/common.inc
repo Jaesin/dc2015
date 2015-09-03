@@ -271,7 +271,7 @@ function valid_email_address($mail) {
  * @param $uri
  *   A plain-text URI that might contain dangerous protocols.
  *
- * @return
+ * @return string
  *   A URI stripped of dangerous protocols and encoded for output to an HTML
  *   attribute value. Because it is already encoded, it should not be set as a
  *   value within a $attributes array passed to Drupal\Core\Template\Attribute,
@@ -281,10 +281,20 @@ function valid_email_address($mail) {
  *   \Drupal\Component\Utility\UrlHelper::stripDangerousProtocols() instead.
  *
  * @see \Drupal\Component\Utility\UrlHelper::stripDangerousProtocols()
- * @see \Drupal\Component\Utility\SafeMarkup::checkPlain()
+ * @see \Drupal\Component\Utility\UrlHelper::filterBadProtocol()
+ *
+ * @deprecated in Drupal 8.0.x-dev, will be removed before Drupal 9.0.0.
+ *   Use UrlHelper::stripDangerousProtocols() or UrlHelper::filterBadProtocol()
+ *   instead. UrlHelper::stripDangerousProtocols() can be used in conjunction
+ *   with \Drupal\Component\Utility\SafeMarkup::format() and an @variable
+ *   placeholder which will perform the necessary escaping.
+ *   UrlHelper::filterBadProtocol() is functionality equivalent to check_url()
+ *   apart from the fact it is protected from double escaping bugs. Note that
+ *   this method no longer marks its output as safe.
+ *
  */
 function check_url($uri) {
-  return SafeMarkup::checkPlain(UrlHelper::stripDangerousProtocols($uri));
+  return Html::escape(UrlHelper::stripDangerousProtocols($uri));
 }
 
 /**
@@ -491,7 +501,7 @@ function _drupal_add_html_head_link($attributes, $header = FALSE) {
 
   if ($header) {
     // Also add a HTTP header "Link:".
-    $href = '<' . SafeMarkup::checkPlain($attributes['href']) . '>;';
+    $href = '<' . Html::escape($attributes['href']) . '>;';
     unset($attributes['href']);
     $element['#attached']['http_header'][] = array('Link',  $href . drupal_http_header_attributes($attributes), TRUE);
   }
@@ -1200,7 +1210,7 @@ function show(&$element) {
  * Retrieves the default properties for the defined element type.
  *
  * @param $type
- *   An element type as defined by hook_element_info().
+ *   An element type as defined by an element plugin.
  *
  * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
  *   Use \Drupal::service('element_info')->getInfo() instead.
@@ -1213,7 +1223,7 @@ function element_info($type) {
  * Retrieves a single property for the defined element type.
  *
  * @param $type
- *   An element type as defined by hook_element_info().
+ *   An element type as defined by an element plugin.
  * @param $property_name
  *   The property within the element type that should be returned.
  * @param $default
@@ -1380,7 +1390,7 @@ function _drupal_flush_css_js() {
  */
 function debug($data, $label = NULL, $print_r = TRUE) {
   // Print $data contents to string.
-  $string = SafeMarkup::checkPlain($print_r ? print_r($data, TRUE) : var_export($data, TRUE));
+  $string = Html::escape($print_r ? print_r($data, TRUE) : var_export($data, TRUE));
 
   // Display values with pre-formatting to increase readability.
   $string = '<pre>' . $string . '</pre>';

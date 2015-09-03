@@ -23,7 +23,7 @@ abstract class MigrateDrupalTestBase extends MigrateTestBase {
    *
    * @var array
    */
-  public static $modules = array('system', 'user', 'field', 'migrate_drupal', 'options');
+  public static $modules = array('system', 'user', 'field', 'migrate_drupal', 'options', 'file');
 
   /**
    * {@inheritdoc}
@@ -56,9 +56,9 @@ abstract class MigrateDrupalTestBase extends MigrateTestBase {
    */
   protected function installMigrations($version) {
     $migration_templates = \Drupal::service('migrate.template_storage')->findTemplatesByTag($version);
-    foreach ($migration_templates as $template) {
+    $migrations = \Drupal::service('migrate.migration_builder')->createMigrations($migration_templates);
+    foreach ($migrations as $migration) {
       try {
-        $migration = Migration::create($template);
         $migration->save();
       }
       catch (PluginNotFoundException $e) {

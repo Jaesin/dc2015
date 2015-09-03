@@ -562,6 +562,22 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
   /**
    * {@inheritdoc}
    */
+  public function getMessageIterator(array $source_id_values = [], $level = NULL) {
+    $query = $this->getDatabase()->select($this->messageTableName(), 'msg')
+      ->fields('msg');
+    $count = 1;
+    foreach ($source_id_values as $id_value) {
+      $query->condition('sourceid' . $count++, $id_value);
+    }
+    if ($level) {
+      $query->condition('level', $level);
+    }
+    return $query->execute();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function prepareUpdate() {
     $this->getDatabase()->update($this->mapTableName())
     ->fields(array('source_row_status' => MigrateIdMapInterface::STATUS_NEEDS_UPDATE))
@@ -753,8 +769,6 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
    * Implementation of Iterator::rewind().
    *
    * This is called before beginning a foreach loop.
-   *
-   * @todo Support idlist, itemlimit.
    */
   public function rewind() {
     $this->currentRow = NULL;
@@ -765,13 +779,6 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
     foreach ($this->destinationIdFields() as $field) {
       $fields[] = $field;
     }
-
-    // @todo Make this work.
-    /*
-    if (isset($this->options['itemlimit'])) {
-      $query = $query->range(0, $this->options['itemlimit']);
-    }
-    */
     $this->result = $this->getDatabase()->select($this->mapTableName(), 'map')
       ->fields('map', $fields)
       ->execute();
@@ -823,7 +830,6 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
    * and FALSE to terminate it.
    */
   public function valid() {
-    // @todo Check numProcessed against itemlimit.
     return $this->currentRow !== FALSE;
   }
 

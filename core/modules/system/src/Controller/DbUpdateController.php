@@ -9,7 +9,6 @@ namespace Drupal\system\Controller;
 
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\KeyValueStore\KeyValueExpirableFactoryInterface;
 use Drupal\Core\Render\BareHtmlPageRendererInterface;
@@ -62,13 +61,6 @@ class DbUpdateController extends ControllerBase {
   protected $account;
 
   /**
-   * The entity definition update manager.
-   *
-   * @var \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface
-   */
-  protected $entityDefinitionUpdateManager;
-
-  /**
    * The bare HTML page renderer.
    *
    * @var \Drupal\Core\Render\BareHtmlPageRendererInterface
@@ -97,19 +89,16 @@ class DbUpdateController extends ControllerBase {
    *   The module handler.
    * @param \Drupal\Core\Session\AccountInterface $account
    *   The current user.
-   * @param \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface $entity_definition_update_manager
-   *   The entity definition update manager.
    * @param \Drupal\Core\Render\BareHtmlPageRendererInterface $bare_html_page_renderer
    *   The bare HTML page renderer.
    */
-  public function __construct($root, KeyValueExpirableFactoryInterface $key_value_expirable_factory, CacheBackendInterface $cache, StateInterface $state, ModuleHandlerInterface $module_handler, AccountInterface $account, EntityDefinitionUpdateManagerInterface $entity_definition_update_manager, BareHtmlPageRendererInterface $bare_html_page_renderer) {
+  public function __construct($root, KeyValueExpirableFactoryInterface $key_value_expirable_factory, CacheBackendInterface $cache, StateInterface $state, ModuleHandlerInterface $module_handler, AccountInterface $account, BareHtmlPageRendererInterface $bare_html_page_renderer) {
     $this->root = $root;
     $this->keyValueExpirableFactory = $key_value_expirable_factory;
     $this->cache = $cache;
     $this->state = $state;
     $this->moduleHandler = $module_handler;
     $this->account = $account;
-    $this->entityDefinitionUpdateManager = $entity_definition_update_manager;
     $this->bareHtmlPageRenderer = $bare_html_page_renderer;
   }
 
@@ -124,7 +113,6 @@ class DbUpdateController extends ControllerBase {
       $container->get('state'),
       $container->get('module_handler'),
       $container->get('current_user'),
-      $container->get('entity.definition_update_manager'),
       $container->get('bare_html_page_renderer')
     );
   }
@@ -240,7 +228,8 @@ class DbUpdateController extends ControllerBase {
       '#type' => 'link',
       '#title' => $this->t('Continue'),
       '#attributes' => array('class' => array('button', 'button--primary')),
-      '#url' => Url::fromUri($request->getUriForPath('/selection')),
+      // @todo Revisit once https://www.drupal.org/node/2548095 is in.
+      '#url' => Url::fromUri('base://selection'),
     );
     return $build;
   }
@@ -323,23 +312,6 @@ class DbUpdateController extends ControllerBase {
     // Warn the user if any updates were incompatible.
     if ($incompatible_updates_exist) {
       drupal_set_message($this->t('Some of the pending updates cannot be applied because their dependencies were not met.'), 'warning');
-    }
-
-    // If there are entity definition updates, display their summary.
-    if ($this->entityDefinitionUpdateManager->needsUpdates()) {
-      $entity_build = array();
-      $summary = $this->entityDefinitionUpdateManager->getChangeSummary();
-      foreach ($summary as $entity_type_id => $items) {
-        $entity_update_key = 'entity_type_updates_' . $entity_type_id;
-        $entity_build[$entity_update_key] = array(
-          '#theme' => 'item_list',
-          '#items' => $items,
-          '#title' => $entity_type_id . ' entity type',
-        );
-        $count++;
-      }
-      // Display these above the module updates, since they will be run first.
-      $build['start'] = $entity_build + $build['start'];
     }
 
     if (empty($count)) {
@@ -513,6 +485,9 @@ class DbUpdateController extends ControllerBase {
    */
   public function requirements($severity, array $requirements, Request $request) {
     $options = $severity == REQUIREMENT_WARNING ? array('continue' => 1) : array();
+    // @todo Revisit once https://www.drupal.org/node/2548095 is in. Something
+    // like Url::fromRoute('system.db_update')->setOptions() should then be
+    // possible.
     $try_again_url = Url::fromUri($request->getUriForPath(''))->setOptions(['query' => $options])->toString(TRUE)->getGeneratedUrl();
 
     $build['status_report'] = array(
@@ -600,16 +575,6 @@ class DbUpdateController extends ControllerBase {
       }
     }
 
-    // Lastly, perform entity definition updates, which will update storage
-    // schema if needed. If module update functions need to work with specific
-    // entity schema they should call the entity update service for the specific
-    // update themselves.
-    // @see \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface::applyEntityUpdate()
-    // @see \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface::applyFieldUpdate()
-    if ($this->entityDefinitionUpdateManager->needsUpdates()) {
-      $operations[] = array('update_entity_definitions', array());
-    }
-
     $batch['operations'] = $operations;
     $batch += array(
       'title' => $this->t('Updating'),
@@ -619,7 +584,8 @@ class DbUpdateController extends ControllerBase {
     );
     batch_set($batch);
 
-    return batch_process(Url::fromUri($request->getUriForPath('/results')), Url::fromUri($request->getUriForPath('/start')));
+    // @todo Revisit once https://www.drupal.org/node/2548095 is in.
+    return batch_process(Url::fromUri('base://results'), Url::fromUri('base://start'));
   }
 
   /**

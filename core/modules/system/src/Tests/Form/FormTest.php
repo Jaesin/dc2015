@@ -8,9 +8,11 @@
 namespace Drupal\system\Tests\Form;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Render\Element;
+use Drupal\Core\Url;
 use Drupal\form_test\Form\FormTestDisabledElementsForm;
 use Drupal\simpletest\WebTestBase;
 use Drupal\user\RoleInterface;
@@ -229,6 +231,67 @@ class FormTest extends WebTestBase {
     $this->drupalPostForm(NULL, $edit, 'Submit');
     $this->assertNoFieldByXpath('//div[contains(@class, "error")]', FALSE, 'No error message is displayed when all required fields are filled.');
     $this->assertRaw("The form_test_validate_required_form form was submitted successfully.", 'Validation form submitted successfully.');
+  }
+
+  /**
+   * Tests that input is retained for safe elements even with an invalid token.
+   *
+   * Submits a test form containing several types of form elements.
+   */
+  public function testInputWithInvalidToken() {
+    // We need to be logged in to have CSRF tokens.
+    $account = $this->createUser();
+    $this->drupalLogin($account);
+    // Submit again with required fields set but an invalid form token and
+    // verify that all the values are retained.
+    $edit = array(
+      'textfield' => $this->randomString(),
+      'checkboxes[bar]' => TRUE,
+      'select' => 'bar',
+      'radios' => 'foo',
+      'form_token' => 'invalid token',
+    );
+    $this->drupalPostForm(Url::fromRoute('form_test.validate_required'), $edit, 'Submit');
+    $this->assertFieldByXpath('//div[contains(@class, "error")]', NULL, 'Error message is displayed with invalid token even when required fields are filled.');
+    $this->assertText('The form has become outdated. Copy any unsaved work in the form below');
+    // Verify that input elements retained the posted values.
+    $this->assertFieldByName('textfield', $edit['textfield']);
+    $this->assertNoFieldChecked('edit-checkboxes-foo');
+    $this->assertFieldChecked('edit-checkboxes-bar');
+    $this->assertOptionSelected('edit-select', 'bar');
+    $this->assertFieldChecked('edit-radios-foo');
+
+    // Check another form that has a textarea input.
+    $edit = array(
+      'textfield' => $this->randomString(),
+      'textarea' => $this->randomString() . "\n",
+      'form_token' => 'invalid token',
+    );
+    $this->drupalPostForm(Url::fromRoute('form_test.required'), $edit, 'Submit');
+    $this->assertFieldByXpath('//div[contains(@class, "error")]', NULL, 'Error message is displayed with invalid token even when required fields are filled.');
+    $this->assertText('The form has become outdated. Copy any unsaved work in the form below');
+    $this->assertFieldByName('textfield', $edit['textfield']);
+    $this->assertFieldByName('textarea', $edit['textarea']);
+
+    // Check another form that has a number input.
+    $edit = array(
+      'integer_step' => mt_rand(1, 100),
+      'form_token' => 'invalid token',
+    );
+    $this->drupalPostForm(Url::fromRoute('form_test.number'), $edit, 'Submit');
+    $this->assertFieldByXpath('//div[contains(@class, "error")]', NULL, 'Error message is displayed with invalid token even when required fields are filled.');
+    $this->assertText('The form has become outdated. Copy any unsaved work in the form below');
+    $this->assertFieldByName('integer_step', $edit['integer_step']);
+
+    // Check a form with a Url field
+    $edit = array(
+      'url' => $this->randomString(),
+      'form_token' => 'invalid token',
+    );
+    $this->drupalPostForm(Url::fromRoute('form_test.url'), $edit, 'Submit');
+    $this->assertFieldByXpath('//div[contains(@class, "error")]', NULL, 'Error message is displayed with invalid token even when required fields are filled.');
+    $this->assertText('The form has become outdated. Copy any unsaved work in the form below');
+    $this->assertFieldByName('url', $edit['url']);
   }
 
   /**
@@ -616,7 +679,7 @@ class FormTest extends WebTestBase {
       $path = strtr($path, array('!type' => $type));
       // Verify that the element exists.
       $element = $this->xpath($path, array(
-        ':name' => SafeMarkup::checkPlain($name),
+        ':name' => Html::escape($name),
         ':div-class' => $class,
         ':value' => isset($item['#value']) ? $item['#value'] : '',
       ));

@@ -16,7 +16,7 @@ use Drupal\migrate_drupal\Tests\d6\MigrateDrupal6TestBase;
 /**
  * Users migration.
  *
- * @group user
+ * @group migrate_drupal_6
  */
 class MigrateUserTest extends MigrateDrupal6TestBase {
 
@@ -95,10 +95,10 @@ class MigrateUserTest extends MigrateDrupal6TestBase {
         array(array(4), array('migrate test role 2')),
         array(array(5), array('migrate test role 3')),
       ),
-      'd6_user_picture_entity_display' => array(
+      'user_picture_entity_display' => array(
         array(array(1), array('user', 'user', 'default', 'user_picture')),
       ),
-      'd6_user_picture_entity_form_display' => array(
+      'user_picture_entity_form_display' => array(
         array(array(1), array('user', 'user', 'default', 'user_picture')),
       ),
       'd6_user_picture_file' => array(
@@ -151,8 +151,8 @@ class MigrateUserTest extends MigrateDrupal6TestBase {
       // user preferred language is not configured on the site. We just want to
       // test if the value was imported correctly.
       $this->assertIdentical($source->language, $user->preferred_langcode->value);
-      $time_zone = $source->expected_timezone ?: $this->config('system.date')->get('timezone.default');
-      $this->assertIdentical($time_zone, $user->getTimeZone());
+      $expected_timezone_name = $source->timezone_name ?: $this->config('system.date')->get('timezone.default');
+      $this->assertIdentical($expected_timezone_name, $user->getTimeZone());
       $this->assertIdentical($source->init, $user->getInitialEmail());
       $this->assertIdentical($roles, $user->getRoles());
 

@@ -10,9 +10,12 @@ namespace Drupal\system\Tests\Update;
 use Drupal\Component\Utility\Crypt;
 use Drupal\config\Tests\SchemaCheckTestTrait;
 use Drupal\Core\Database\Database;
+use Drupal\Core\DependencyInjection\ContainerBuilder;
+use Drupal\Core\Language\Language;
 use Drupal\Core\Url;
 use Drupal\simpletest\WebTestBase;
 use Drupal\user\Entity\User;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -130,9 +133,6 @@ abstract class UpdatePathTestBase extends WebTestBase {
   function __construct($test_id = NULL) {
     parent::__construct($test_id);
     $this->zlibInstalled = function_exists('gzopen');
-
-    // Set the update url.
-    $this->updateUrl = Url::fromRoute('system.db_update');
   }
 
   /**
@@ -144,6 +144,10 @@ abstract class UpdatePathTestBase extends WebTestBase {
    * container that would normally be done via the installer.
    */
   protected function setUp() {
+    $this->runDbTasks();
+    // Allow classes to set database dump files.
+    $this->setDatabaseDumpFiles();
+
     // We are going to set a missing zlib requirement property for usage
     // during the performUpgrade() and tearDown() methods. Also set that the
     // tests failed.
@@ -151,6 +155,11 @@ abstract class UpdatePathTestBase extends WebTestBase {
       parent::setUp();
       return;
     }
+
+    // Set the update url. This must be set here rather than in
+    // self::__construct() or the old URL generator will leak additional test
+    // sites.
+    $this->updateUrl = Url::fromRoute('system.db_update');
 
     // These methods are called from parent::setUp().
     $this->setBatch();
@@ -173,23 +182,20 @@ abstract class UpdatePathTestBase extends WebTestBase {
     // Add the config directories to settings.php.
     drupal_install_config_directories();
 
-    // Install any additional modules.
-    $this->installModulesFromClassProperty($container);
-
     // Restore the original Simpletest batch.
     $this->restoreBatch();
 
-    // Rebuild and reset.
-    $this->rebuildAll();
+    // Set the container. parent::rebuildAll() would normally do this, but this
+    // not safe to do here, because the database has not been updated yet.
+    $this->container = \Drupal::getContainer();
 
-    // Replace User 1 with the user created here.
-    /** @var \Drupal\user\UserInterface $account */
-    $account = User::load(1);
-    $account->setPassword($this->rootUser->pass_raw);
-    $account->setEmail($this->rootUser->getEmail());
-    $account->setUsername($this->rootUser->getUsername());
-    $account->save();
+    $this->replaceUser1();
   }
+
+  /**
+   * Set database dump files to be used.
+   */
+  abstract protected function setDatabaseDumpFiles();
 
   /**
    * Add settings that are missed since the installer isn't run.
@@ -235,8 +241,12 @@ abstract class UpdatePathTestBase extends WebTestBase {
     $this->drupalGet($this->updateUrl);
     $this->clickLink(t('Continue'));
 
+    $this->doSelectionTest();
     // Run the update hooks.
     $this->clickLink(t('Apply pending updates'));
+
+    // Ensure there are no failed updates.
+    $this->assertNoRaw('<strong>' . t('Failed:') . '</strong>');
 
     // The config schema can be incorrect while the update functions are being
     // executed. But once the update has been completed, it needs to be valid
@@ -248,27 +258,59 @@ abstract class UpdatePathTestBase extends WebTestBase {
       $config = $this->config($name);
       $this->assertConfigSchema($typed_config, $name, $config->get());
     }
+
+    // Ensure that the update hooks updated all entity schema.
+    $this->assertFalse(\Drupal::service('entity.definition_update_manager')->needsUpdates(), 'After all updates ran, entity schema is up to date.');
   }
 
   /**
-   * {@inheritdoc}
+   * Runs the install database tasks for the driver used by the test runner.
    */
-  protected function rebuildAll() {
-    // We know the rebuild causes notices, so don't exit on failure.
-    $die_on_fail = $this->dieOnFail;
-    $this->dieOnFail = FALSE;
-    parent::rebuildAll();
+  protected function runDbTasks() {
+    // Create a minimal container so that t() works.
+    // @see install_begin_request()
+    $container = new ContainerBuilder();
+    $container->setParameter('language.default_values', Language::$defaultValues);
+    $container
+      ->register('language.default', 'Drupal\Core\Language\LanguageDefault')
+      ->addArgument('%language.default_values%');
+    $container
+      ->register('language_manager', 'Drupal\Core\Language\LanguageManager')
+      ->addArgument(new Reference('language.default'));
+    $container
+      ->register('string_translation', 'Drupal\Core\StringTranslation\TranslationManager')
+      ->addArgument(new Reference('language_manager'));
+    \Drupal::setContainer($container);
 
-    // Remove the notices we get due to the menu link rebuild prior to running
-    // the system updates for the schema change.
-    foreach ($this->assertions as $key => $assertion) {
-      if ($assertion['message_group'] == 'Notice' && basename($assertion['file']) == 'MenuTreeStorage.php' && strpos($assertion['message'], 'unserialize(): Error at offset 0') !== FALSE) {
-        unset($this->assertions[$key]);
-        $this->deleteAssert($assertion['message_id']);
-        $this->results['#exception']--;
-      }
+    require_once __DIR__ . '/../../../../../includes/install.inc';
+    $connection = Database::getConnection();
+    $errors = db_installer_object($connection->driver())->runTasks();
+    if (!empty($errors)) {
+      $this->fail('Failed to run installer database tasks: ' . implode(', ', $errors));
     }
-    $this->dieOnFail = $die_on_fail;
+  }
+
+  /**
+   * Replace User 1 with the user created here.
+   */
+  protected function replaceUser1() {
+    /** @var \Drupal\user\UserInterface $account */
+    // @todo: Saving the account before the update is problematic.
+    //   https://www.drupal.org/node/2560237
+    $account = User::load(1);
+    $account->setPassword($this->rootUser->pass_raw);
+    $account->setEmail($this->rootUser->getEmail());
+    $account->setUsername($this->rootUser->getUsername());
+    $account->save();
+  }
+
+  /**
+   * Tests the selection page.
+   */
+  protected function doSelectionTest() {
+    // No-op. Tests wishing to do test the selection page or the general
+    // update.php environment before running update.php can override this method
+    // and implement their required tests.
   }
 
 }

@@ -338,7 +338,7 @@ services:
     arguments: ['@request_stack', '@url_generator']
   form_error_handler:
     class: Drupal\Core\Form\FormErrorHandler
-    arguments: ['@string_translation', '@link_generator']
+    arguments: ['@string_translation', '@link_generator', '@renderer']
   form_cache:
     class: Drupal\Core\Form\FormCache
     arguments: ['@app.root', '@keyvalue.expirable', '@module_handler', '@current_user', '@csrf_token', '@logger.channel.form', '@request_stack', '@page_cache_request_policy']
@@ -630,12 +630,8 @@ services:
   http_kernel.basic:
     class: Symfony\Component\HttpKernel\HttpKernel
     arguments: ['@event_dispatcher', '@controller_resolver', '@request_stack']
-  http_negotiation.format_negotiator:
-    class: Drupal\Core\ContentNegotiation
-    private: true
   http_middleware.negotiation:
     class: Drupal\Core\StackMiddleware\NegotiationMiddleware
-    arguments: ['@http_negotiation.format_negotiator']
     tags:
       - { name: http_middleware, priority: 400 }
   http_middleware.reverse_proxy:

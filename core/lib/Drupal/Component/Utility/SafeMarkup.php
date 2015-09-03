@@ -108,6 +108,9 @@ class SafeMarkup {
    *   A list of safe strings as previously retrieved by self::getAll().
    *
    * @throws \UnexpectedValueException
+   *
+   * @internal This is called by FormCache, StringTranslation and the Batch API.
+   *   It should not be used anywhere else.
    */
   public static function setMultiple(array $safe_strings) {
     foreach ($safe_strings as $string => $strategies) {
@@ -122,20 +125,6 @@ class SafeMarkup {
         }
       }
     }
-  }
-
-  /**
-   * Encodes special characters in a plain-text string for display as HTML.
-   *
-   * @param string $string
-   *   A string.
-   *
-   * @return string
-   *   The escaped string. If $string was already set as safe with
-   *   self::set(), it won't be escaped again.
-   */
-  public static function escape($string) {
-    return static::isSafe($string) ? $string : static::checkPlain($string);
   }
 
   /**
@@ -165,6 +154,13 @@ class SafeMarkup {
    *   UTF-8.
    *
    * @ingroup sanitization
+   *
+   * @deprecated Will be removed before Drupal 8.0.0. Rely on Twig's
+   *   auto-escaping feature, or use the @link theme_render #plain_text @endlink
+   *   key when constructing a render array that contains plain text in order to
+   *   use the renderer's auto-escaping feature. If neither of these are
+   *   possible, \Drupal\Component\Utility\Html::escape() can be used in places
+   *   where explicit escaping is needed.
    *
    * @see drupal_validate_utf8()
    */
@@ -226,13 +222,18 @@ class SafeMarkup {
       switch ($key[0]) {
         case '@':
           // Escaped only.
-          $args[$key] = static::escape($value);
+          if (!SafeMarkup::isSafe($value)) {
+            $args[$key] = Html::escape($value);
+          }
           break;
 
         case '%':
         default:
           // Escaped and placeholder.
-          $args[$key] = '<em class="placeholder">' . static::escape($value) . '</em>';
+          if (!SafeMarkup::isSafe($value)) {
+            $value = Html::escape($value);
+          }
+          $args[$key] = '<em class="placeholder">' . $value . '</em>';
           break;
 
         case '!':
