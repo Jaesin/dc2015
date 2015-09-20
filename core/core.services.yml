@@ -342,6 +342,11 @@ services:
     class: Drupal\Core\Form\FormCache
     arguments: ['@app.root', '@keyvalue.expirable', '@module_handler', '@current_user', '@csrf_token', '@logger.channel.form', '@request_stack', '@page_cache_request_policy']
     public: false  # Private to form_builder
+  handler_type.manager:
+    class: Drupal\Core\Handler\HandlerTypeManager
+    arguments: ['@module_handler', '@cache.discovery', '@string_translation']
+    tags:
+      - { name: plugin_manager_cache_clear }
   keyvalue:
     class: Drupal\Core\KeyValueStore\KeyValueFactory
     arguments: ['@service_container', '%factory.keyvalue%']
