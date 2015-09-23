@@ -148,8 +148,8 @@ class MigrateExecutable implements MigrateExecutableInterface {
             break;
           default:
             $limit = PHP_INT_MAX;
-            $this->message->display($this->t('Invalid PHP memory_limit !limit, setting to unlimited.',
-              array('!limit' => $limit)));
+            $this->message->display($this->t('Invalid PHP memory_limit @limit, setting to unlimited.',
+              array('@limit' => $limit)));
         }
       }
       $this->memoryLimit = $limit;
@@ -222,7 +222,7 @@ class MigrateExecutable implements MigrateExecutableInterface {
     }
     catch (\Exception $e) {
       $this->message->display(
-        $this->t('Migration failed with source plugin exception: !e', array('!e' => $e->getMessage())), 'error');
+        $this->t('Migration failed with source plugin exception: @e', array('@e' => $e->getMessage())), 'error');
       $this->migration->setStatus(MigrationInterface::STATUS_IDLE);
       return MigrationInterface::RESULT_FAILED;
     }
@@ -299,8 +299,8 @@ class MigrateExecutable implements MigrateExecutableInterface {
       }
       catch (\Exception $e) {
         $this->message->display(
-          $this->t('Migration failed with source plugin exception: !e',
-            array('!e' => $e->getMessage())), 'error');
+          $this->t('Migration failed with source plugin exception: @e',
+            array('@e' => $e->getMessage())), 'error');
         $this->migration->setStatus(MigrationInterface::STATUS_IDLE);
         return MigrationInterface::RESULT_FAILED;
       }

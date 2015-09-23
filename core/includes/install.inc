@@ -482,9 +482,9 @@ function drupal_install_config_directories() {
   // itself. But if it somehow fails anyway, the installation cannot proceed.
   // Bail out using a similar error message as in system_requirements().
   if (!install_ensure_config_directory(CONFIG_STAGING_DIRECTORY)) {
-    throw new Exception(t('The directory %directory could not be created or could not be made writable. To proceed with the installation, either create the directory and modify its permissions manually or ensure that the installer has the permissions to create it automatically. For more information, see the <a href="@handbook_url">online handbook</a>.', array(
+    throw new Exception(t('The directory %directory could not be created or could not be made writable. To proceed with the installation, either create the directory and modify its permissions manually or ensure that the installer has the permissions to create it automatically. For more information, see the <a href=":handbook_url">online handbook</a>.', array(
       '%directory' => config_get_config_directory(CONFIG_STAGING_DIRECTORY),
-      '@handbook_url' => 'https://www.drupal.org/server-permissions',
+      ':handbook_url' => 'https://www.drupal.org/server-permissions',
     )));
   }
 
@@ -549,16 +549,22 @@ function drupal_verify_profile($install_state) {
 
   $requirements = array();
 
-  if (count($missing_modules)) {
-    $modules = array();
+  if ($missing_modules) {
+    $build = [
+      '#theme' => 'item_list',
+      '#context' => ['list_style' => 'comma-list'],
+    ];
+
     foreach ($missing_modules as $module) {
-      $modules[] = '<span class="admin-missing">' . Unicode::ucfirst($module) . '</span>';
+      $build['#items'][] = array('#markup' => '<span class="admin-missing">' . Unicode::ucfirst($module) . '</span>');
     }
+
+    $modules_list = \Drupal::service('renderer')->renderPlain($build);
     $requirements['required_modules'] = array(
-      'title'       => t('Required modules'),
-      'value'       => t('Required modules not found.'),
-      'severity'    => REQUIREMENT_ERROR,
-      'description' => t('The following modules are required but were not found. Move them into the appropriate modules subdirectory, such as <em>/modules</em>. Missing modules: !modules', array('!modules' => implode(', ', $modules))),
+      'title' => t('Required modules'),
+      'value' => t('Required modules not found.'),
+      'severity' => REQUIREMENT_ERROR,
+      'description' => t('The following modules are required but were not found. Move them into the appropriate modules subdirectory, such as <em>/modules</em>. Missing modules: @modules', array('@modules' => $modules_list)),
     );
   }
   return $requirements;

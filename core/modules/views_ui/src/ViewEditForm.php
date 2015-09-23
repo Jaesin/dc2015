@@ -139,14 +139,14 @@ class ViewEditForm extends ViewFormBase {
         '#account' => $this->entityManager->getStorage('user')->load($view->lock->owner),
       );
       $lock_message_substitutions = array(
-        '!user' => drupal_render($username),
-        '!age' => $this->dateFormatter->formatTimeDiffSince($view->lock->updated),
-        '@url' => $view->url('break-lock-form'),
+        '@user' => drupal_render($username),
+        '@age' => $this->dateFormatter->formatTimeDiffSince($view->lock->updated),
+        ':url' => $view->url('break-lock-form'),
       );
       $form['locked'] = array(
         '#type' => 'container',
         '#attributes' => array('class' => array('view-locked', 'messages', 'messages--warning')),
-        '#children' => $this->t('This view is being edited by user !user, and is therefore locked from editing by others. This lock is !age old. Click here to <a href="@url">break this lock</a>.', $lock_message_substitutions),
+        '#children' => $this->t('This view is being edited by user @user, and is therefore locked from editing by others. This lock is @age old. Click here to <a href=":url">break this lock</a>.', $lock_message_substitutions),
         '#weight' => -10,
       );
     }
@@ -752,14 +752,14 @@ class ViewEditForm extends ViewFormBase {
     foreach (Views::fetchPluginNames('display', NULL, array($view->get('base_table'))) as $type => $label) {
       $element['add_display'][$type] = array(
         '#type' => 'submit',
-        '#value' => $this->t('Add !display', array('!display' => $label)),
+        '#value' => $this->t('Add @display', array('@display' => $label)),
         '#limit_validation_errors' => array(),
         '#submit' => array('::submitDisplayAdd', '::submitDelayDestination'),
         '#attributes' => array('class' => array('add-display')),
         // Allow JavaScript to remove the 'Add ' prefix from the button label when
         // placing the button in a "Add" dropdown menu.
         '#process' => array_merge(array('views_ui_form_button_was_clicked'), $this->elementInfo->getInfoProperty('submit', '#process', array())),
-        '#values' => array($this->t('Add !display', array('!display' => $label)), $label),
+        '#values' => array($this->t('Add @display', array('@display' => $label)), $label),
       );
     }
 
@@ -1130,12 +1130,8 @@ class ViewEditForm extends ViewFormBase {
         $last = end($keys);
         foreach ($contents as $key => $pid) {
           if ($key != $last) {
-            if ($group_info['groups'][$gid] == 'OR') {
-              $store[$pid]['#link'] = $this->t('!link &nbsp;&nbsp; OR', ['!link' => $store[$pid]['#link']]);
-            }
-            else {
-              $store[$pid]['#link'] = $this->t('!link &nbsp;&nbsp; AND', ['!link' => $store[$pid]['#link']]);
-            }
+            $operator = $group_info['groups'][$gid] == 'OR' ? $this->t('OR') : $this->t('AND');
+            $store[$pid]['#link'] = SafeMarkup::format('@link <span>@operator</span>', ['@link' => $store[$pid]['#link'], '@operator' => $operator]);
           }
           $build['fields'][$pid] = $store[$pid];
         }
