@@ -73,10 +73,14 @@ class TranslatableString implements SafeStringInterface {
    *   The string that is to be translated.
    * @param array $arguments
    *   (optional) An array with placeholder replacements, keyed by placeholder.
+   *   See \Drupal\Component\Utility\PlaceholderTrait::placeholderFormat() for
+   *   additional information about placeholders.
    * @param array $options
    *   (optional) An array of additional options.
    * @param \Drupal\Core\StringTranslation\TranslationInterface $string_translation
    *   (optional) The string translation service.
+   *
+   * @see \Drupal\Component\Utility\PlaceholderTrait::placeholderFormat()
    */
   public function __construct($string, array $arguments = array(), array $options = array(), TranslationInterface $string_translation = NULL) {
     $this->string = $string;
@@ -140,9 +144,6 @@ class TranslatableString implements SafeStringInterface {
     }
 
     // Handle any replacements.
-    // @todo https://www.drupal.org/node/2509218 Note that the argument
-    //   replacement is not stored so that different sanitization strategies can
-    //   be used in different contexts.
     if ($args = $this->getArguments()) {
       return $this->placeholderFormat($this->translatableString, $args);
     }
