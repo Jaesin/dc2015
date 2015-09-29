@@ -507,8 +507,8 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
       // A NULL key value will fail.
       if (!isset($source_id_values[$field_name])) {
         $this->message->display(t(
-          'Could not save to map table due to NULL value for key field !field',
-          array('!field' => $field_name)), 'error');
+          'Could not save to map table due to NULL value for key field @field',
+          array('@field' => $field_name)), 'error');
         return;
       }
       $keys[$key_name] = $source_id_values[$field_name];
@@ -803,6 +803,22 @@ class Sql extends PluginBase implements MigrateIdMapInterface, ContainerFactoryP
    */
   public function key() {
     return serialize($this->currentKey);
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function currentDestination() {
+    if ($this->valid()) {
+      $result = array();
+      foreach ($this->destinationIdFields() as $field_name) {
+        $result[$field_name] = $this->currentRow[$field_name];
+      }
+      return $result;
+    }
+    else {
+      return NULL;
+    }
   }
 
   /**

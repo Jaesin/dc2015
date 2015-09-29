@@ -15,6 +15,7 @@ namespace Drupal\Core\Template;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\SafeMarkup;
 use Drupal\Component\Utility\SafeStringInterface;
+use Drupal\Core\Datetime\DateFormatter;
 use Drupal\Core\Render\RenderableInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\UrlGeneratorInterface;
@@ -50,6 +51,13 @@ class TwigExtension extends \Twig_Extension {
    * @var \Drupal\Core\Theme\ThemeManagerInterface
    */
   protected $themeManager;
+
+  /**
+   * The date formatter.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatter
+   */
+  protected $dateFormatter;
 
   /**
    * Constructs \Drupal\Core\Template\TwigExtension.
@@ -103,6 +111,19 @@ class TwigExtension extends \Twig_Extension {
   }
 
   /**
+   * Sets the date formatter.
+   *
+   * @param \Drupal\Core\Datetime\DateFormatter $date_formatter
+   *   The date formatter.
+   *
+   * @return $this
+   */
+  public function setDateFormatter(DateFormatter $date_formatter) {
+    $this->dateFormatter = $date_formatter;
+    return $this;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function getFunctions() {
@@ -133,7 +154,6 @@ class TwigExtension extends \Twig_Extension {
       // "raw" filter and give it identifiable names. These filters should only
       // be used in "trans" tags.
       // @see TwigNodeTrans::compileString()
-      new \Twig_SimpleFilter('passthrough', 'twig_raw_filter', array('is_safe' => array('html'))),
       new \Twig_SimpleFilter('placeholder', [$this, 'escapePlaceholder'], array('is_safe' => array('html'), 'needs_environment' => TRUE)),
 
       // Replace twig's escape filter with our own.
@@ -152,6 +172,7 @@ class TwigExtension extends \Twig_Extension {
       new \Twig_SimpleFilter('clean_id', '\Drupal\Component\Utility\Html::getId'),
       // This filter will render a renderable array to use the string results.
       new \Twig_SimpleFilter('render', array($this, 'renderVar')),
+      new \Twig_SimpleFilter('format_date', array($this->dateFormatter, 'format')),
     );
   }
 

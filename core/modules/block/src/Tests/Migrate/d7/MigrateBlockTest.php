@@ -18,12 +18,10 @@ use Drupal\migrate_drupal\Tests\d7\MigrateDrupal7TestBase;
  */
 class MigrateBlockTest extends MigrateDrupal7TestBase {
 
-  /**
-   * Modules to enable.
-   *
-   * @var array
+ /**
+   * {@inheritdoc}
    */
-  static $modules = array(
+  static $modules = [
     'block',
     'views',
     'comment',
@@ -33,7 +31,7 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
     'text',
     'filter',
     'user',
-  );
+  ];
 
   /**
    * {@inheritdoc}
@@ -50,14 +48,16 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
     $config->save();
 
     // Install one of D8's test themes.
-    \Drupal::service('theme_handler')->install(array('test_theme'));
+    \Drupal::service('theme_handler')->install(['bartik']);
 
-    $this->executeMigration('d7_filter_format');
-    $this->executeMigration('d7_user_role');
-    $this->executeMigration('block_content_type');
-    $this->executeMigration('block_content_body_field');
-    $this->executeMigration('d7_custom_block');
-    $this->executeMigration('d7_block');
+    $this->executeMigrations([
+      'd7_filter_format',
+      'd7_user_role',
+      'block_content_type',
+      'block_content_body_field',
+      'd7_custom_block',
+      'd7_block',
+    ]);
   }
 
   /**
@@ -117,7 +117,7 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
 
     // Assert that disabled blocks (or enabled blocks whose plugin IDs could
     // be resolved) did not migrate.
-    $non_existent_blocks = array(
+    $non_existent_blocks = [
       'bartik_system_navigation',
       'bartik_system_help',
       'seven_user_new',
@@ -155,7 +155,7 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
       'seven_menu_menu-test-menu',
       'seven_statistics_popular',
       'seven_block_1',
-    );
+    ];
     $this->assertTrue(empty(Block::loadMultiple($non_existent_blocks)));
   }
 
