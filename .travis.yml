@@ -87,7 +87,7 @@ script:
   # Run PHP Unit and Kernel tests.
   - cd core && vendor/bin/phpunit --verbose && cd $TRAVIS_BUILD_DIR
   # Run all tests.
-  - php ./core/scripts/run-tests.sh --url http://dc2015.l --concurrency 8 --all
+  - php ./core/scripts/run-tests.sh --php $(which php) --url http://dc2015.l --concurrency 8 --all
   # Create an alias for running simpletests.
   # Run web test. Specifiv tests should be added in one of the following formats.
   # - php ./core/scripts/run-tests.sh --php $(which php) --url $SIMPLETEST_BASE_URL --class "\Drupal\rest\Tests\NodeTest"
