@@ -1,0 +1,49 @@
+<?php
+
+/**
+ * @file
+ * Moderation of revisionable entities.
+ */
+
+use \Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function moderation_entity_type_alter(array &$entity_types) {
+  if (isset($entity_types['node'])) {
+    /** @var \Drupal\Core\Entity\ContentEntityTypeInterface $entity_type */
+    $entity_type = $entity_types['node'];
+
+    // Swap in a different form handler to ensure the proper version is loaded.
+    $handlers = $entity_type->getHandlerClasses();
+    $handlers['form']['default'] = 'Drupal\moderation\Form\NodeForm';
+    $handlers['form']['edit'] = $handlers['form']['default'];
+    $entity_type->setHandlerClass('form', $handlers['form']);
+  }
+}
+
+/**
+ * Determine if the given node has a draft.
+ *
+ * Draft is simply defined here as an unpublished revision that is newer than
+ * the published node.
+ *
+ * @param \Drupal\core\NodeInterface $node
+ *   The node object.
+ *
+ * @return bool|int
+ *   The revision ID if a draft exists, otherwise FALSE.
+ */
+function moderation_node_has_draft(NodeInterface $node) {
+  $current_revision = $node->getRevisionId();
+  $node_storage = \Drupal::service('entity.manager')->getStorage('node');
+  $vids = $node_storage->revisionIds($node);
+
+  // Filter out vids less than or equal to current revision.
+  asort($vids);
+  $filtered = array_filter($vids, function ($var) use ($current_revision) {
+    return $var > $current_revision;
+  });
+  return array_pop($filtered) ?: FALSE;
+}
