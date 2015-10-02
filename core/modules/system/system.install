@@ -1236,7 +1236,7 @@ function system_update_8001(&$sandbox = NULL) {
         $schema->changeField('menu_tree', $name, 'system_update_8001_' . $name, $spec);
       }
       $spec = array(
-        'description' => 'The title for the link. May be a serialized TranslatableString.',
+        'description' => 'The title for the link. May be a serialized TranslatableMarkup.',
         'type' => 'blob',
         'size' => 'big',
         'not null' => FALSE,
@@ -1440,6 +1440,7 @@ function system_update_8005() {
         ] + $tabs_default_settings;
         _system_update_create_block($name, $theme_name, $values);
 
+        $name = 'block.block.seven_secondary_local_tasks';
         $values = [
           'region' => 'pre_content',
           'id' => 'seven_secondary_local_tasks',
@@ -1470,16 +1471,16 @@ function system_update_8005() {
 
       default:
         $custom_themes_installed = TRUE;
-        $name = sprintf('block.block.%s_local_actions', $theme_name);
+        $name = 'block.block.' . $theme_name . '_local_actions';
         $values = [
-          'id' => sprintf('%s_local_actions', $theme_name),
+          'id' => $theme_name . '_local_actions',
           'weight' => -10,
         ] + $local_actions_default_settings;
         _system_update_create_block($name, $theme_name, $values);
 
         $name = sprintf('block.block.%s_local_tasks', $theme_name);
         $values = [
-          'id' => sprintf('%s_local_tasks', $theme_name),
+          'id' => $theme_name . '_local_tasks',
           'weight' => -20,
         ] + $tabs_default_settings;
         _system_update_create_block($name, $theme_name, $values);
@@ -1660,6 +1661,150 @@ function system_update_8008() {
       $schema->delete($key);
     }
   }
+}
+
+/**
+ * Add allowed attributes to existing html filters.
+ */
+function system_update_8009() {
+  $default_mapping = [
+    '<a>' => '<a href hreflang>',
+    '<blockquote>' => '<blockquote cite>',
+    '<ol>' => '<ol start type>',
+    '<ul>' => '<ul type>',
+    '<img>' => '<img src alt height width>',
+    '<h2>' => '<h2 id>',
+    '<h3>' => '<h3 id>',
+    '<h4>' => '<h4 id>',
+    '<h5>' => '<h5 id>',
+    '<h6>' => '<h6 id>',
+  ];
+  $config_factory = \Drupal::configFactory();
+  foreach ($config_factory->listAll('filter.format') as $name) {
+    $allowed_html_mapping = $default_mapping;
+    $config = $config_factory->getEditable($name);
+    // The image alignment filter needs the data-align attribute.
+    $align_enabled = $config->get('filters.filter_align.status');
+    if ($align_enabled) {
+      $allowed_html_mapping['<img>'] = str_replace('>', ' data-align>', $allowed_html_mapping['<img>']);
+    }
+    // The image caption filter needs the data-caption attribute.
+    $caption_enabled = $config->get('filters.filter_caption.status');
+    if ($caption_enabled) {
+      $allowed_html_mapping['<img>'] = str_replace('>', ' data-caption>', $allowed_html_mapping['<img>']);
+    }
+    $allowed_html = $config->get('filters.filter_html.settings.allowed_html');
+    if (!empty($allowed_html)) {
+      $allowed_html = strtr($allowed_html, $allowed_html_mapping);
+      $config->set('filters.filter_html.settings.allowed_html', $allowed_html);
+      $config->save();
+    }
+  }
+}
+
+/**
+ * Place page title blocks in every theme.
+ */
+function system_update_8010() {
+  // When block module is not installed, there is nothing that could be done
+  // except showing a warning.
+  if (!\Drupal::moduleHandler()->moduleExists('block')) {
+    return t('Block module is not enabled. The page title has been converted to a block, but default page title markup will still display at the top of the main content area.');
+  }
+
+  /** @var \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler */
+  $theme_handler = \Drupal::service('theme_handler');
+  $custom_themes_installed = FALSE;
+  $message = NULL;
+  $langcode = \Drupal::service('language_manager')->getCurrentLanguage()->getId();
+
+  $page_title_default_settings = [
+    'plugin' => 'page_title_block',
+    'region' => 'content',
+    'settings.label' => 'Page title',
+    'settings.label_display' => 0,
+    'visibility' => [],
+    'weight' => -50,
+    'langcode' => $langcode,
+  ];
+  foreach ($theme_handler->listInfo() as $theme) {
+    $theme_name = $theme->getName();
+    switch ($theme_name) {
+      case 'bartik':
+        $name = 'block.block.bartik_page_title';
+        $values = [
+          'id' => 'bartik_page_title',
+        ] + $page_title_default_settings;
+        _system_update_create_block($name, $theme_name, $values);
+        break;
+
+      case 'stark':
+        $name = 'block.block.stark_page_title';
+        $values = [
+          'id' => 'stark_page_title',
+          'region' => 'content',
+        ] + $page_title_default_settings;
+        _system_update_create_block($name, $theme_name, $values);
+        break;
+
+      case 'seven':
+        $name = 'block.block.seven_page_title';
+        $values = [
+          'id' => 'seven_page_title',
+          'region' => 'header',
+        ] + $page_title_default_settings;
+        _system_update_create_block($name, $theme_name, $values);
+        break;
+
+      case 'classy':
+        $name = 'block.block.classy_page_title';
+        $values = [
+          'id' => 'classy_page_title',
+          'region' => 'content',
+        ] + $page_title_default_settings;
+        _system_update_create_block($name, $theme_name, $values);
+        break;
+
+      default:
+        $custom_themes_installed = TRUE;
+        $name = sprintf('block.block.%s_page_title', $theme_name);
+        $values = [
+          'id' => sprintf('%s_page_title', $theme_name),
+          'region' => 'content',
+          'weight' => '-50',
+        ] + $page_title_default_settings;
+        _system_update_create_block($name, $theme_name, $values);
+        break;
+    }
+  }
+
+  if ($custom_themes_installed) {
+    $message = t('Because your site has custom theme(s) installed, we have placed the page title block in the content region. Please manually review the block configuration and remove the page title variables from your page templates.');
+  }
+
+  return $message;
+}
+
+/**
+ * Add secondary local tasks block to Seven (fixes system_update_8005).
+ */
+function system_update_8011() {
+  $langcode = \Drupal::service('language_manager')->getCurrentLanguage()->getId();
+  $theme_name = 'seven';
+  $name = 'block.block.seven_secondary_local_tasks';
+  $values = [
+      'plugin' => 'local_tasks_block',
+      'region' => 'pre_content',
+      'id' => 'seven_secondary_local_tasks',
+      'settings.label' => 'Secondary tabs',
+      'settings.label_display' => 0,
+      'settings.primary' => FALSE,
+      'settings.secondary' => TRUE,
+      'visibility' => [],
+      'weight' => 0,
+      'langcode' => $langcode,
+    ];
+  _system_update_create_block($name, $theme_name, $values);
 }
 
 /**

@@ -8,6 +8,7 @@
 namespace Drupal\file\Plugin\Field\FieldType;
 
 use Drupal\Component\Utility\Bytes;
+use Drupal\Component\Render\PlainTextOutput;
 use Drupal\Component\Utility\Random;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
@@ -260,7 +261,8 @@ class FileItem extends EntityReferenceItem {
    *   An array of token objects to pass to token_replace().
    *
    * @return string
-   *   A file directory URI with tokens replaced.
+   *   An unsanitized file directory URI with tokens replaced. The result of
+   *   the token replacement is then converted to plain text and returned.
    *
    * @see token_replace()
    */
@@ -268,9 +270,9 @@ class FileItem extends EntityReferenceItem {
     $settings = $this->getSettings();
     $destination = trim($settings['file_directory'], '/');
 
-    // Replace tokens.
-    $destination = \Drupal::token()->replace($destination, $data);
-
+    // Replace tokens. As the tokens might contain HTML we convert it to plain
+    // text.
+    $destination = PlainTextOutput::renderFromHtml(\Drupal::token()->replace($destination, $data));
     return $settings['uri_scheme'] . '://' . $destination;
   }
 

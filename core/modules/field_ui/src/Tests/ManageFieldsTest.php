@@ -70,6 +70,7 @@ class ManageFieldsTest extends WebTestBase {
     $this->drupalPlaceBlock('system_breadcrumb_block');
     $this->drupalPlaceBlock('local_actions_block');
     $this->drupalPlaceBlock('local_tasks_block');
+    $this->drupalPlaceBlock('page_title_block');
 
     // Create a test user.
     $admin_user = $this->drupalCreateUser(array('access content', 'administer content types', 'administer node fields', 'administer node form display', 'administer node display', 'administer taxonomy', 'administer taxonomy_term fields', 'administer taxonomy_term display', 'administer users', 'administer account settings', 'administer user display', 'bypass node access'));
@@ -587,19 +588,6 @@ class ManageFieldsTest extends WebTestBase {
         $this->assertFalse($this->xpath('//select[@id="edit-new-storage-type"]//option[@value=:field_type]', array(':field_type' => $field_type)), SafeMarkup::format('Non-configurable field type @field_type is not available.', array('@field_type' => $field_type)));
       }
     }
-  }
-
-  /**
-   * Tests renaming a bundle.
-   */
-  function testRenameBundle() {
-    $type2 = strtolower($this->randomMachineName(8)) . '_test';
-
-    $options = array(
-      'type' => $type2,
-    );
-    $this->drupalPostForm('admin/structure/types/manage/' . $this->contentType, $options, t('Save content type'));
-    $this->manageFieldsPage($type2);
   }
 
   /**

@@ -12,7 +12,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\SafeMarkup;
-use Drupal\Component\Utility\SafeStringInterface;
+use Drupal\Component\Render\MarkupInterface;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Config\Config;
@@ -22,7 +22,7 @@ use Drupal\Core\Template\Attribute;
 use Drupal\Core\Theme\ThemeSettings;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Render\Element;
-use Drupal\Core\Render\SafeString;
+use Drupal\Core\Render\Markup;
 
 /**
  * @defgroup content_flags Content markers
@@ -386,7 +386,7 @@ function theme_get_setting($setting_name, $theme = NULL) {
  *   https://www.drupal.org/node/2575065
  */
 function theme_render_and_autoescape($arg) {
-  if ($arg instanceOf SafeStringInterface) {
+  if ($arg instanceOf MarkupInterface) {
     return (string) $arg;
   }
   $return = NULL;
@@ -1292,7 +1292,7 @@ function template_preprocess_html(&$variables) {
   if (!empty($variables['page']['#title'])) {
     $head_title = array(
       // Marking the title as safe since it has had the tags stripped.
-      'title' => SafeString::create(trim(strip_tags($variables['page']['#title']))),
+      'title' => Markup::create(trim(strip_tags($variables['page']['#title']))),
       'name' => $site_config->get('name'),
     );
   }
@@ -1341,9 +1341,6 @@ function template_preprocess_html(&$variables) {
  */
 function template_preprocess_page(&$variables) {
   $language_interface = \Drupal::languageManager()->getCurrentLanguage();
-
-  // Move some variables to the top level for themer convenience and template cleanliness.
-  $variables['title'] = $variables['page']['#title'];
 
   foreach (\Drupal::theme()->getActiveTheme()->getRegions() as $region) {
     if (!isset($variables['page'][$region])) {
@@ -1465,6 +1462,10 @@ function template_preprocess_maintenance_page(&$variables) {
   $variables['logo'] = theme_get_setting('logo.url');
   $variables['site_name'] = $site_config->get('name');
   $variables['site_slogan'] = $site_config->get('slogan');
+
+  // Maintenance page and install page need page title in variable because there
+  // are no blocks.
+  $variables['title'] = $variables['page']['#title'];
 }
 
 /**
@@ -1706,6 +1707,9 @@ function drupal_common_theme() {
     ),
     'page' => array(
       'render element' => 'page',
+    ),
+    'page_title' => array(
+      'variables' => array('title' => NULL),
     ),
     'region' => array(
       'render element' => 'elements',

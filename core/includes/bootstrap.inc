@@ -13,7 +13,7 @@ use Drupal\Component\Utility\Unicode;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\Extension\ExtensionDiscovery;
 use Drupal\Core\Logger\RfcLogLevel;
-use Drupal\Core\Render\SafeString;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Utility\Error;
@@ -122,47 +122,6 @@ const CONFIG_STAGING_DIRECTORY = 'staging';
  */
 define('DRUPAL_ROOT', dirname(dirname(__DIR__)));
 
-/**
- * Returns the appropriate configuration directory.
- *
- * @param bool $require_settings
- *   Only configuration directories with an existing settings.php file
- *   will be recognized. Defaults to TRUE. During initial installation,
- *   this is set to FALSE so that Drupal can detect a matching directory,
- *   then create a new settings.php file in it.
- * @param bool $reset
- *   Force a full search for matching directories even if one had been
- *   found previously. Defaults to FALSE.
- * @param \Symfony\Component\HttpFoundation\Request $request
- *   (optional) The current request. Defaults to \Drupal::request() or a new
- *   request created from globals.
- *
- * @return string
- *   The path of the matching directory.@see default.settings.php
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\Core\DrupalKernel::getSitePath() instead. If the kernel is
- *   unavailable or the site path needs to be recalculated then
- *   Drupal\Core\DrupalKernel::findSitePath() can be used.
- */
-function conf_path($require_settings = TRUE, $reset = FALSE, Request $request = NULL) {
-  if (!isset($request)) {
-    if (\Drupal::hasRequest()) {
-      $request = \Drupal::request();
-    }
-    // @todo Remove once external CLI scripts (Drush) are updated.
-    else {
-      $request = Request::createFromGlobals();
-    }
-  }
-  if (\Drupal::hasService('kernel')) {
-    $site_path = \Drupal::service('kernel')->getSitePath();
-  }
-  if (!isset($site_path) || empty($site_path)) {
-    $site_path = DrupalKernel::findSitePath($request, $require_settings);
-  }
-  return $site_path;
-}
 /**
  * Returns the path of a configuration directory.
  *
@@ -444,7 +403,7 @@ function watchdog_exception($type, Exception $exception, $message = NULL, $varia
  * drupal_set_message(t('An error occurred and processing did not complete.'), 'error');
  * @endcode
  *
- * @param string|\Drupal\Component\Utility\SafeStringInterface $message
+ * @param string|\Drupal\Component\Render\MarkupInterface $message
  *   (optional) The translated message to be displayed to the user. For
  *   consistency with other messages, it should begin with a capital letter and
  *   end with a period.
@@ -491,13 +450,13 @@ function drupal_set_message($message = NULL, $type = 'status', $repeat = FALSE) 
       $_SESSION['messages'][$type] = array();
     }
 
-    // Convert strings which are safe to the simplest SafeString objects.
-    if (!($message instanceof SafeString) && SafeMarkup::isSafe($message)) {
-      $message = SafeString::create((string) $message);
+    // Convert strings which are safe to the simplest Markup objects.
+    if (!($message instanceof Markup) && SafeMarkup::isSafe($message)) {
+      $message = Markup::create((string) $message);
     }
 
     // Do not use strict type checking so that equivalent string and
-    // SafeStringInterface objects are detected.
+    // MarkupInterface objects are detected.
     if ($repeat || !in_array($message, $_SESSION['messages'][$type])) {
       $_SESSION['messages'][$type][] = $message;
     }
