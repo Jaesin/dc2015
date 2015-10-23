@@ -33,13 +33,13 @@
     padding-right: 10px;
     padding-left: 0;
   }
-  .layout-column.half {
+  .layout-column--half {
     width: 50%;
   }
-  .layout-column.quarter {
+  .layout-column--quarter {
     width: 25%;
   }
-  .layout-column.three-quarter {
+  .layout-column--three-quarter {
     width: 75%;
   }
 }
@@ -132,7 +132,11 @@ small .admin-link:after {
   cursor: default;
 }
 .system-modules td {
-  padding-left: 0;
+  padding-left: 0; /* LTR */
+}
+[dir="rtl"] .system-modules td {
+  padding-left: 12px;
+  padding-right: 0;
 }
 
 @media screen and (max-width: 40em) {
@@ -178,13 +182,22 @@ small .admin-link:after {
   float: right;
 }
 .module-link-help {
-  background: url(../../../misc/icons/787878/questionmark-disc.svg) 0 50% no-repeat;
+  background: url(../../../misc/icons/787878/questionmark-disc.svg) 0 50% no-repeat; /* LTR */
+}
+[dir="rtl"] .module-link-help {
+  background-position: top 50% right 0;
 }
 .module-link-permissions {
-  background: url(../../../misc/icons/787878/key.svg) 0 50% no-repeat;
+  background: url(../../../misc/icons/787878/key.svg) 0 50% no-repeat; /* LTR */
+}
+[dir="rtl"] .module-link-permissions {
+  background-position: top 50% right 0;
 }
 .module-link-configure {
-  background: url(../../../misc/icons/787878/cog.svg) 0 50% no-repeat;
+  background: url(../../../misc/icons/787878/cog.svg) 0 50% no-repeat; /* LTR */
+}
+[dir="rtl"] .module-link-configure {
+  background-position: top 50% right 0;
 }
 
 /* Status report. */
@@ -369,5 +382,8 @@ small .admin-link:after {
   padding: 0 0 0 0.7em;
 }
 .system-themes-admin-form {
-  clear: left;
+  clear: left; /* LTR */
+}
+[dir="rtl"] .system-themes-admin-form {
+  clear: right;
 }

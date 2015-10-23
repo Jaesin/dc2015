@@ -11,7 +11,6 @@ use Drupal\Core\Cache\Cache;
 use Drupal\user\Plugin\views\access\Role;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Drupal\views\Views;
-use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Tests views role access plugin.
@@ -44,7 +43,7 @@ class AccessRoleTest extends AccessTestBase {
       'config' => ['user.role.' . $this->normalRole],
       'module' => ['user'],
     ];
-    $this->assertIdentical($expected, $view->calculateDependencies());
+    $this->assertIdentical($expected, $view->calculateDependencies()->getDependencies());
 
     $executable = Views::executableFactory()->get($view);
     $executable->setDisplay('page_1');
@@ -84,7 +83,7 @@ class AccessRoleTest extends AccessTestBase {
       'config' => $roles,
       'module' => ['user'],
     ];
-    $this->assertIdentical($expected, $view->calculateDependencies());
+    $this->assertIdentical($expected, $view->calculateDependencies()->getDependencies());
     $this->drupalLogin($this->webUser);
     $this->drupalGet('test-role');
     $this->assertResponse(403);
